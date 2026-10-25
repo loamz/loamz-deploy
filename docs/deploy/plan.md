@@ -27,6 +27,36 @@ storage behind another app.
   (10 GB each, made for this, S3-compatible) are the safer homes for dumps, and a database dump is far below 10 GB.
 - **Where 100 GB does exist for free:** Oracle's 200 GB disk on the VM. Use that for media.
 
+## Option B: Cloudflare-native (Pages for the app, Workers for the server, R2 for files)
+
+**Fits as is:** the web app on Pages (free, global, HTTPS, single-page fallback for `/auth/callback`; serve the API on the
+same domain so the refresh cookie keeps working). Files in R2, uploaded **straight from the browser** with short-lived signed
+URLs the server issues after checking membership (Workers cap request bodies, so they must not carry the bytes). R2 lifecycle
+rules expire old objects. R2 costs $0.015 per GB-month past the free 10 GB, so **100 GB is about $1.50 a month with free
+downloads**: this is also the place for large files and videos.
+
+**Needs a port, not a copy:** the server. It is Rust with axum, sqlx and Postgres `LISTEN/NOTIFY`; none of that runs in a
+Worker. The Cloudflare equivalents suit our design well:
+
+- one **Durable Object per conversation** = one writer at a time, which is exactly the epoch check, gap-free numbering and
+  safe retries we already enforce; its built-in SQLite holds the log;
+- the object holds the live connections (WebSocket), replacing the SSE hub and Postgres notifications;
+- accounts, devices, key packages, welcomes, sessions and codes in D1 or a per-account Durable Object;
+- our pure crates (`chat-domain`, `chat-identity`, `chat-proto`) compile to WASM and are reused. The `worker` Rust crate
+  supports SQLite-backed Durable Objects.
+
+Cost of the port: the server layer (`chat-server`, `chat-store-pg`, about half the Rust code) is rewritten and its tests
+re-aimed; the encryption core, the web app and the wire format do not change. Keycloak cannot run on Workers; work sign-in
+would verify tokens from an identity provider hosted elsewhere, or wait.
+
+**Free-plan limits to design around (verify on Cloudflare's pages):** Workers 100,000 requests a day and 10 ms CPU per
+request; Durable Objects and D1 about 100,000 rows written a day and 5 GB. A message writes several rows (the entry and its
+receipts), so the free plan carries a few thousand messages a day: right for an alpha, not for growth. The $5 a month plan
+lifts this by orders of magnitude.
+
+**Playbook.com for videos: not recommended** (300-file cap, 1,000 API calls a month, no direct or CDN links on free, not
+intended as app storage); saving $1.50 a month is not worth a fragile part.
+
 ## How far 100 GB goes
 
 - A message costs the server roughly 0.5 KB (ciphertext, row and index). Each message also causes up to two receipts,
