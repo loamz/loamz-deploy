@@ -9,9 +9,23 @@ provider's own page before relying on them**; they change without notice.
 |---|---|---|
 | Disk for Postgres and local files | Oracle Always Free: 200 GB of block storage, shared by boot and data volumes (a boot volume is at least ~47 GB) | Yes: this is the "100 GB" that works |
 | Object storage (S3 API) | Cloudflare R2: 10 GB, free downloads. Backblaze B2: 10 GB. One vendor advertises 100 GB free (Gozunga) but only on its own marketing page | No: about 10 GB per provider |
+| Playbook.com Free (a creative-asset manager, not an object store) | "100GB storage or up to 300 assets", 1,000 API calls a month, 5 public share links, no CDN links | **No for the app** (see below) |
 | Compute | Oracle Always Free Ampere (ARM). **Reported to have been cut in June 2026 from 4 CPUs / 24 GB to 2 CPUs / 12 GB, inconsistently enforced** | Enough for this app either way |
 
 So: Postgres and, at first, encrypted media on the 200 GB disk; R2 or B2 only for off-site backups and later overflow.
+
+## Playbook.com (checked against their pricing page)
+
+Free plan: 100 GB **or 300 files, whichever comes first**, 1,000 API calls a month, 2 GB per video, 5 public share links,
+no CDN links, no S3-compatible access. It is built for design teams sharing assets, and its terms say nothing about use as
+storage behind another app.
+
+- **Not usable for chat media.** Every encrypted photo or voice note is a file: 300 files is gone on day one. 1,000 API
+  calls a month is about 33 a day, and each upload or download costs at least one call.
+- **Possible, but not worth it, for backups.** One encrypted database dump a day fits 300 files and 1,000 calls, but we
+  would be leaning on a product not meant for it, with no promise of keeping the account. Cloudflare R2 or Backblaze B2
+  (10 GB each, made for this, S3-compatible) are the safer homes for dumps, and a database dump is far below 10 GB.
+- **Where 100 GB does exist for free:** Oracle's 200 GB disk on the VM. Use that for media.
 
 ## How far 100 GB goes
 
