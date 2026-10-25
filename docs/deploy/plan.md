@@ -27,6 +27,25 @@ storage behind another app.
   (10 GB each, made for this, S3-compatible) are the safer homes for dumps, and a database dump is far below 10 GB.
 - **Where 100 GB does exist for free:** Oracle's 200 GB disk on the VM. Use that for media.
 
+## Without Oracle: what is left (checked October 2026; verify on each provider's page)
+
+**Neon (managed Postgres), free plan:** about 1 GB per project (recently doubled from 0.5 GB), **100 compute-hours a month**,
+and the database sleeps after 5 minutes idle, which the free plan cannot turn off. When the monthly hours run out, compute
+is suspended until the next cycle. A chat is used around the clock, so it would be awake far more than 100 hours (730 in a
+month), and every wake-up after idle adds a delay to the first message. Our server also holds one permanent connection
+for change notifications, which would keep it awake all the time. Neon is fine for development or a tiny alpha; not for a
+live messenger. **Supabase free** pauses a project after a week idle, has 500 MB and no backups.
+
+**Hosting the Rust server for free:** I found no free host that keeps a container running 24/7. Fly.io has no free tier;
+Render's free service sleeps after 15 minutes and takes 30-50 seconds to wake (which would break live delivery); Google Cloud
+Run scales to zero and I could not confirm how open connections are billed. The realistic choices are:
+
+| Option | Cost | Always on | Notes |
+|---|---|---|---|
+| Small VPS running the current server and Postgres | about $4-6 a month | yes | Least work. Everything we built runs unchanged, with real Postgres |
+| Cloudflare-native (Option B below) | $0 for an alpha, $5 a month when it grows | yes | A port of the server layer; no database to host, no VM |
+| Neon plus a free host | $0 | no | Sleeps and runs out of hours; not recommended |
+
 ## Option B: Cloudflare-native (Pages for the app, Workers for the server, R2 for files)
 
 **Fits as is:** the web app on Pages (free, global, HTTPS, single-page fallback for `/auth/callback`; serve the API on the
