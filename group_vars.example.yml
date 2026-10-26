@@ -11,3 +11,7 @@ oidc_issuer: ""
 oidc_jwks_url: ""
 # Where nightly dumps are copied off the machine, as an rclone remote path (e.g. "r2:loamz-backups"). Empty keeps them on the machine only.
 backup_remote: ""
+# Invitations: "required" (new people need a code from someone already in) or "off" (anyone who signs in is let in).
+invites: required
+# Emails let in without an invitation, comma separated (you, to start with).
+founders: ""
