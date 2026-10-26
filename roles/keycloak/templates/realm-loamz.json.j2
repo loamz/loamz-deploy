@@ -2,7 +2,7 @@
   "realm": "loamz",
   "displayName": "Loamz",
   "enabled": true,
-  "sslRequired": "external",
+  "sslRequired": "{{ 'none' if dev | default(false) else 'external' }}",
   "organizationsEnabled": true,
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
@@ -52,12 +52,12 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "frontchannelLogout": true,
-      "rootUrl": "https://{{ domain }}",
-      "redirectUris": ["https://{{ domain }}/auth/callback"],
-      "webOrigins": ["https://{{ domain }}"],
+      "rootUrl": "{{ scheme | default('https') }}://{{ domain }}",
+      "redirectUris": ["{{ scheme | default('https') }}://{{ domain }}/auth/callback"],
+      "webOrigins": ["{{ scheme | default('https') }}://{{ domain }}"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "https://{{ domain }}/*"
+        "post.logout.redirect.uris": "{{ scheme | default('https') }}://{{ domain }}/*"
       },
       "protocolMappers": [
         {
@@ -91,6 +91,9 @@
       "optionalClientScopes": []
     }
   ],
+{% if dev | default(false) %}
+  "identityProviders": []
+{% else %}
   "identityProviderMappers": [
     {
       "name": "google picture",
@@ -116,4 +119,5 @@
       }
     }
   ]
+{% endif %}
 }
