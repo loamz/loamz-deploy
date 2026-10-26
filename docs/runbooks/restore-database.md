@@ -96,7 +96,7 @@ rm -f /tmp/chat-drill.dump
 
 ## Part B: Monthly Recovery Drill Checklist
 
-Execute this checklist on the first Monday of every month. Record results in `docs/security/recovery-drills.md` (`UNCONFIRMED: check with Claude`).
+Execute this checklist on the first Monday of every month. Record results in `docs/runbooks/restore-database.md` (the monthly drill checklist) (`UNCONFIRMED: check with Claude`).
 
 - [ ] **1. Backup Freshness:** Confirm a new backup file was written to `/var/backups/loamz-chat/` within the past 24 hours.
   ```bash
