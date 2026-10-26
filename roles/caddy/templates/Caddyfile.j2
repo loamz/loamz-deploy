@@ -36,6 +36,9 @@
 	}
 
 	# Hashed build files never change; the page itself must always be fresh.
+	# The service worker must be re-checked every time, or an update never reaches phones.
+	@worker path /sw.js
+	header @worker Cache-Control "no-cache"
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 }

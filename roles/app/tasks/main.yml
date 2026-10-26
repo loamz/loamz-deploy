@@ -38,6 +38,16 @@
   args:
     creates: /etc/loamz-chat/secrets.env
 
+# Added later than the first three, so it is appended if missing rather than part of the file's creation.
+- name: Notification key, made once
+  ansible.builtin.shell: |
+    grep -q '^CHAT_PUSH_SEED=' /etc/loamz-chat/secrets.env && exit 0
+    echo "CHAT_PUSH_SEED=$(openssl rand -hex 32)" >> /etc/loamz-chat/secrets.env
+    echo added
+  register: push_seed
+  changed_when: "'added' in push_seed.stdout"
+  notify: Restart chat-server
+
 - name: Settings
   ansible.builtin.template:
     src: settings.env.j2
