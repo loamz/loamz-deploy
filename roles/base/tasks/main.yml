@@ -1,9 +1,17 @@
 - name: Packages
   ansible.builtin.apt:
-    name: [ufw, fail2ban, unattended-upgrades, curl, openssl, rclone]
+    name: [rsync, ufw, fail2ban, unattended-upgrades, curl, openssl, rclone]
     state: present
     update_cache: true
     cache_valid_time: 3600
+
+# Oracle's Ubuntu images ship a rule that rejects everything but SSH ahead of anything ufw adds.
+- name: Oracle's own firewall rules are replaced by ufw's
+  ansible.builtin.shell: |
+    iptables -D INPUT -j REJECT --reject-with icmp-host-prohibited 2>/dev/null || true
+    iptables -D FORWARD -j REJECT --reject-with icmp-host-prohibited 2>/dev/null || true
+    [ -f /etc/iptables/rules.v4 ] && sed -i '/-j REJECT --reject-with icmp-host-prohibited/d' /etc/iptables/rules.v4 || true
+  changed_when: false
 
 - name: Only SSH and the web are reachable from outside
   community.general.ufw:
