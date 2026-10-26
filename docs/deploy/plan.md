@@ -114,30 +114,38 @@ One VM and a handful of containers is exactly what playbooks are good at. Propos
 
 ## What must exist before real users (in order)
 
+Status as of 2026-10-26. **Done** means built and tested here; it is not the same as deployed.
+
 **Blockers (nobody should sign in before these):**
-1. Real SMS. In India, sending OTP texts needs a DLT-registered sender and templates, so a global provider's trial is
-   not enough; an India-focused provider may be needed. Costs real money per code. Per-IP and per-country limits first,
-   because SMS abuse is billed to you.
-2. HTTPS, domain, HSTS, and a correct CSP for the web app (scripts from self, `wasm-unsafe-eval` for the crypto module).
-3. Secrets: the device-authority key certifies every device; losing it invalidates all identities and leaking it lets
-   someone forge them. Keep an offline copy, store it in the vault, plan rotation (clients already accept a list of keys).
-4. Backups that are tested. The server only holds ciphertext, so its backup is not the problem; see item 8.
-5. Cleanup jobs. Today nothing consumes the `outbox` table, so it grows forever; expired sessions, codes, lookups and
-   old welcomes also need pruning.
-6. Per-IP and per-account request limits, a cap on open live streams per account, and idle timeouts.
-7. Health, metrics and logs without content; alerts when the disk, memory or error rate is off.
-8. **Chat history backup/recovery.** History lives only in browsers. Clearing site data or losing the phone loses it for
-   good (the reset button restores *new* messages only). Needs the planned recovery key / passkey backup before this is
-   called a messenger.
+1. **Open.** Real SMS. In India, sending OTP texts needs a DLT-registered sender and templates, so a global provider's
+   trial is not enough; an India-focused provider may be needed. Costs real money per code. Per-address limits are done
+   (below), because SMS abuse is billed to you; per-country limits already existed.
+2. **Done.** HTTPS (Caddy, automatic certificates), HSTS, and a strict CSP (scripts from self, `wasm-unsafe-eval` for the
+   crypto module), checked by signing in through the production build under that policy. **Open:** the domain itself.
+3. **Done in the playbooks.** Secrets are made on the machine and never leave it; `backup-secrets.yml` copies the
+   device-authority key to the owner once. **Open:** a rotation drill (clients already accept a list of keys).
+4. **Done.** Nightly dump, two weeks kept, optional copy to an rclone remote. **Open:** a restore test on a schedule.
+5. **Done.** Hourly tidy of published events, handled-event records, expired sign-ins, old codes and lookup counters.
+6. **Mostly done.** Per-address limits (sign-in much tighter than the API; the real address comes from our own proxy only).
+   **Open:** a cap on open live streams per account, per-account limits.
+7. **Open.** Metrics and alerts. Health check exists at `/healthz`; logs carry no content.
+8. **Partly done.** A passphrase-protected backup file brings old messages to a new device. **Open:** automatic backup and the
+   planned recovery key / passkey, so a lost phone does not depend on someone having made a file.
 
 **Needed for it to feel like a messenger:**
-9. Push notifications when the tab is closed (Web Push, wake-only payload) and an installable app (manifest, service worker).
-10. Photos and voice notes (encrypted blobs, quota, retention) - the part that uses storage.
-11. Changing a phone number, deleting an account, exporting data, blocking and reporting.
-12. Privacy policy and terms, and compliance with India's DPDP Act (consent, deletion, breach notice).
+9. **Done.** Closed-app notifications (signed, empty Web Push wake-ups) and an installable app (manifest, icons, service worker).
+10. **Done** for photos, voice notes and files (encrypted in the browser, 16 MiB each, 200 MB per person per day, stored as
+    bytes the server cannot read). **Open:** retention and clean-up of old files, video.
+11. **Open.** Changing a phone number, deleting an account, exporting data, blocking and reporting.
+12. **Open.** Privacy policy and terms, and compliance with India's DPDP Act (consent, deletion, breach notice).
+
+Also built since the first plan: groups with names, replies, emoji reactions, in-app feedback (`/api/v1/feedback`).
 
 **Security items still open from the internal review:** certificate expiry and revocation, key-package draining,
 message-size padding, interop vectors and fuzzing, and the independent audit. The beta label stays until then.
+New this round, worth a look in the audit: file types are re-labelled to octet-stream unless they are plain pictures or voice
+notes (a sender picks the type), push addresses are limited to the real push services (the server calls them), and the
+backup file's header is authenticated with its contents.
 
 ## Staging of the rollout
 
