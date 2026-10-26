@@ -1,0 +1,33 @@
+[Unit]
+Description=Loamz Chat server
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+User=loamz-chat
+Group=loamz-chat
+EnvironmentFile=/etc/loamz-chat/settings.env
+EnvironmentFile=/etc/loamz-chat/secrets.env
+# The password is read here so it never appears in a file the server user can list.
+ExecStart=/bin/sh -c 'DATABASE_URL="postgres://chat:$(cat /etc/loamz-chat/db-password)@127.0.0.1/chat" exec /opt/loamz-chat/chat-server'
+Restart=always
+RestartSec=2
+# What it may touch: its own data directory, and nothing else.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadWritePaths=/var/lib/loamz-chat
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

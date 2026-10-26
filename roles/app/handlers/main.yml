@@ -1,0 +1,5 @@
+- name: Restart chat-server
+  ansible.builtin.systemd:
+    name: chat-server
+    state: restarted
+    daemon_reload: true

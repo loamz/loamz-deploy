@@ -1,0 +1,39 @@
+- name: PostgreSQL
+  ansible.builtin.apt:
+    name: [postgresql, python3-psycopg2]
+    state: present
+
+- name: Running, and on at every boot
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: true
+
+# Ubuntu's PostgreSQL listens on localhost only, and the firewall refuses everything but SSH and the web.
+
+- name: Database password, made once and kept only on this machine
+  ansible.builtin.shell: |
+    umask 037
+    openssl rand -hex 24 > /etc/loamz-chat/db-password
+    chgrp loamz-chat /etc/loamz-chat/db-password
+  args:
+    creates: /etc/loamz-chat/db-password
+
+- name: Read it
+  ansible.builtin.slurp:
+    src: /etc/loamz-chat/db-password
+  register: db_password
+  no_log: true
+
+- name: Database user
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: chat
+    password: "{{ db_password.content | b64decode | trim }}"
+  no_log: true
+
+- name: Database
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: chat
+    owner: chat

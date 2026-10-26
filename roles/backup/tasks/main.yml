@@ -1,0 +1,44 @@
+- name: Where dumps go
+  ansible.builtin.file:
+    path: /var/backups/loamz-chat
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: "0700"
+
+- name: Nightly dump script
+  ansible.builtin.template:
+    src: backup.sh.j2
+    dest: /usr/local/bin/loamz-chat-backup
+    mode: "0750"
+
+- name: Timer and service
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ item.name }}"
+    content: "{{ item.body }}"
+    mode: "0644"
+  loop:
+    - name: loamz-chat-backup.service
+      body: |
+        [Unit]
+        Description=Dump the Loamz Chat database
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/loamz-chat-backup
+    - name: loamz-chat-backup.timer
+      body: |
+        [Unit]
+        Description=Nightly Loamz Chat backup
+        [Timer]
+        OnCalendar=*-*-* 03:15:00
+        RandomizedDelaySec=15min
+        Persistent=true
+        [Install]
+        WantedBy=timers.target
+
+- name: Timer on
+  ansible.builtin.systemd:
+    name: loamz-chat-backup.timer
+    state: started
+    enabled: true
+    daemon_reload: true

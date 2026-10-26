@@ -1,0 +1,41 @@
+{
+	email {{ acme_email }}
+}
+
+{{ domain }} {
+	encode zstd gzip
+
+	# The app talks to the server on this machine; everything else is the built web app.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8090 {
+			# A live stream must not be buffered or cut short.
+			flush_interval -1
+			transport http {
+				response_header_timeout 0
+			}
+		}
+	}
+	handle /healthz {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle {
+		root * /opt/loamz-chat/web
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		Cross-Origin-Opener-Policy same-origin
+		# Only our own scripts run; 'wasm-unsafe-eval' is for the encryption module. Photos and voice notes are
+		# decrypted into blob: addresses. Work sign-in talks to the company's identity server.
+		Content-Security-Policy "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'{% if oidc_issuer %} {{ oidc_issuer.split('/realms')[0] }}{% endif %}; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+	}
+
+	# Hashed build files never change; the page itself must always be fresh.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+}

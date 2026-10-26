@@ -1,0 +1,62 @@
+- name: Directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /opt/loamz-chat, owner: root, group: root, mode: "0755" }
+    - { path: /opt/loamz-chat/web, owner: root, group: root, mode: "0755" }
+    - { path: /var/lib/loamz-chat/blobs, owner: loamz-chat, group: loamz-chat, mode: "0700" }
+
+- name: Server program
+  ansible.builtin.copy:
+    src: artifacts/chat-server
+    dest: /opt/loamz-chat/chat-server
+    mode: "0755"
+  notify: Restart chat-server
+
+- name: Web app
+  ansible.posix.synchronize:
+    src: artifacts/web/
+    dest: /opt/loamz-chat/web/
+    delete: true
+    rsync_opts: ["--chmod=D755,F644"]
+
+# Secrets are made here, once, and stay here. The device-authority key certifies every device, so it is
+# the one to back up (see backup-secrets.yml): losing it means every device must be set up again.
+- name: Secrets, made once
+  ansible.builtin.shell: |
+    umask 037
+    {
+      echo "CHAT_AUTHORITY_SEED=$(openssl rand -hex 32)"
+      echo "CHAT_SESSION_SEED=$(openssl rand -hex 32)"
+      echo "CHAT_OTP_SECRET=$(openssl rand -hex 32)"
+    } > /etc/loamz-chat/secrets.env
+    chgrp loamz-chat /etc/loamz-chat/secrets.env
+  args:
+    creates: /etc/loamz-chat/secrets.env
+
+- name: Settings
+  ansible.builtin.template:
+    src: settings.env.j2
+    dest: /etc/loamz-chat/settings.env
+    owner: root
+    group: loamz-chat
+    mode: "0640"
+  notify: Restart chat-server
+
+- name: Service definition
+  ansible.builtin.template:
+    src: chat-server.service.j2
+    dest: /etc/systemd/system/chat-server.service
+    mode: "0644"
+  notify: Restart chat-server
+
+- name: Running, and on at every boot
+  ansible.builtin.systemd:
+    name: chat-server
+    state: started
+    enabled: true
+    daemon_reload: true

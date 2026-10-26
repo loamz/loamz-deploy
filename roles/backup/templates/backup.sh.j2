@@ -1,0 +1,14 @@
+#!/bin/sh
+# Dumps the database (and the encrypted files' index with it), keeps two weeks, and copies off the machine when a remote is set.
+# The files themselves are ciphertext in /var/lib/loamz-chat/blobs; they are copied too. Nothing here can be read without the
+# people's own keys, but the device-authority key in /etc/loamz-chat/secrets.env is NOT in this backup: keep it separately
+# (ansible-playbook backup-secrets.yml).
+set -eu
+dir=/var/backups/loamz-chat
+stamp=$(date +%Y%m%d-%H%M)
+runuser -u postgres -- pg_dump --format=custom chat > "$dir/chat-$stamp.dump"
+find "$dir" -name 'chat-*.dump' -mtime +14 -delete
+{% if backup_remote %}
+rclone copy "$dir/chat-$stamp.dump" "{{ backup_remote }}/db/"
+rclone sync /var/lib/loamz-chat/blobs "{{ backup_remote }}/blobs/" --immutable --transfers 4
+{% endif %}

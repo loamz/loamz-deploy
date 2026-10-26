@@ -1,0 +1,28 @@
+- name: Caddy's package source
+  ansible.builtin.shell: |
+    set -e
+    apt-get install -y debian-keyring debian-archive-keyring apt-transport-https gpg
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
+    apt-get update
+  args:
+    creates: /etc/apt/sources.list.d/caddy-stable.list
+
+- name: Caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+
+- name: The site
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    mode: "0644"
+    validate: caddy validate --adapter caddyfile --config %s
+  notify: Reload caddy
+
+- name: Running, and on at every boot
+  ansible.builtin.service:
+    name: caddy
+    state: started
+    enabled: true

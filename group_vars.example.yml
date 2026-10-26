@@ -1,0 +1,12 @@
+# Copy to group_vars/all.yml (ignored by git). Nothing secret goes here: secrets are made on the
+# server the first time, and never pass through this file or git.
+domain: chat.example.com        # a name pointing at the machine's public IP; Caddy gets its HTTPS certificate for it
+acme_email: you@example.com     # Let's Encrypt writes here about expiring certificates
+sms_countries: "44,91"          # country calling codes that may sign in by phone
+# Real SMS needs a provider; until one is wired, leave "closed" and phone sign-in is off.
+sms: closed
+# Company accounts (Keycloak). Leave empty to turn them off.
+oidc_issuer: ""
+oidc_jwks_url: ""
+# Where nightly dumps are copied off the machine, as an rclone remote path (e.g. "r2:loamz-backups"). Empty keeps them on the machine only.
+backup_remote: ""
