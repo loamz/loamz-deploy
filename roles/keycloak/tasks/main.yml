@@ -57,19 +57,26 @@
     dest: /etc/keycloak/import/realm-loamz.json
     mode: "0644"
 
-- name: The settings Keycloak starts with
-  ansible.builtin.shell: |
-    umask 077
-    {
-      echo "KC_BOOTSTRAP_ADMIN_USERNAME=admin"
-      echo "KC_BOOTSTRAP_ADMIN_PASSWORD=$(cat /etc/keycloak/admin-password)"
-      echo "KC_DB_PASSWORD=$(cat /etc/keycloak/db-password)"
-      echo "GOOGLE_CLIENT_ID={{ google_client_id }}"
-      echo "GOOGLE_CLIENT_SECRET={{ google_client_secret }}"
-      echo "SMTP_PASSWORD={{ smtp_password }}"
-    } > /etc/keycloak/keycloak.env
+- name: Read the administrator password
+  ansible.builtin.slurp:
+    src: /etc/keycloak/admin-password
+  register: kc_admin_password
   no_log: true
-  changed_when: true
+
+# Written with its content (not by a script), so it only counts as a change, and restarts Keycloak, when something
+# in it really changed.
+- name: The settings Keycloak starts with
+  ansible.builtin.copy:
+    dest: /etc/keycloak/keycloak.env
+    mode: "0600"
+    content: |
+      KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD={{ kc_admin_password.content | b64decode | trim }}
+      KC_DB_PASSWORD={{ kc_db_password.content | b64decode | trim }}
+      GOOGLE_CLIENT_ID={{ google_client_id }}
+      GOOGLE_CLIENT_SECRET={{ google_client_secret }}
+      SMTP_PASSWORD={{ smtp_password }}
+  no_log: true
   notify: Restart keycloak
 
 - name: Service definition
