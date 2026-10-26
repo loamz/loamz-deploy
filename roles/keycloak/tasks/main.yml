@@ -105,6 +105,7 @@
 # every time, by a script that changes only what is missing.
 - name: The realm has every setting the app needs
   ansible.builtin.script: files/settle.py --url http://127.0.0.1:8081 --password-file /etc/keycloak/admin-password
-  executable: python3
+  args:
+    executable: python3
   register: settled
   changed_when: "'changed: nothing' not in settled.stdout"
