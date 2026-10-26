@@ -34,7 +34,7 @@
 		Cross-Origin-Opener-Policy same-origin
 		# Only our own scripts run; 'wasm-unsafe-eval' is for the encryption module. Photos and voice notes are
 		# decrypted into blob: addresses. Work sign-in talks to the company's identity server.
-		Content-Security-Policy "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://{{ auth_domain }}; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+		Content-Security-Policy "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' blob: data: https://*.googleusercontent.com; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://{{ auth_domain }}; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
 	}
 
 	# Hashed build files never change; the page itself must always be fresh.
