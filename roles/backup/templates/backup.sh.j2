@@ -8,7 +8,7 @@ dir=/var/backups/loamz-chat
 stamp=$(date +%Y%m%d-%H%M)
 runuser -u postgres -- pg_dump --format=custom chat > "$dir/chat-$stamp.dump"
 find "$dir" -name 'chat-*.dump' -mtime +14 -delete
-{% if backup_remote %}
+{% if backup_remote | default("") %}
 rclone copy "$dir/chat-$stamp.dump" "{{ backup_remote }}/db/"
 rclone sync /var/lib/loamz-chat/blobs "{{ backup_remote }}/blobs/" --immutable --transfers 4
 {% endif %}

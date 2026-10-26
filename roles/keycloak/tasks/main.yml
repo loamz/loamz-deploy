@@ -13,12 +13,15 @@
 
 - name: Directories
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
     owner: root
     group: root
-    mode: "0700"
-  loop: [/etc/keycloak, /etc/keycloak/import]
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/keycloak, mode: "0700" }
+    # Keycloak runs as an ordinary user inside its container and must be able to read the realm to import it.
+    - { path: /etc/keycloak/import, mode: "0755" }
 
 # Made here, once, and kept only on this machine (backup-secrets.yml copies them to you).
 - name: Keycloak's database password and administrator password, made once
@@ -52,7 +55,7 @@
   ansible.builtin.template:
     src: realm-loamz.json.j2
     dest: /etc/keycloak/import/realm-loamz.json
-    mode: "0600"
+    mode: "0644"
 
 - name: The settings Keycloak starts with
   ansible.builtin.shell: |

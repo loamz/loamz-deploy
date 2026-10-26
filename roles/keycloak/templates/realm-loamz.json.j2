@@ -32,28 +32,6 @@
     "starttls": "{{ 'true' if smtp_port | string in ['587', '2525'] else 'false' }}"
   },
 {% endif %}
-  "clientScopes": [
-    {
-      "name": "chat-api",
-      "description": "Adds the loamz-chat audience to the access token.",
-      "protocol": "openid-connect",
-      "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" },
-      "protocolMappers": [
-        {
-          "name": "loamz-chat audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "consentRequired": false,
-          "config": {
-            "included.client.audience": "loamz-chat",
-            "id.token.claim": "false",
-            "access.token.claim": "true",
-            "introspection.token.claim": "true"
-          }
-        }
-      ]
-    }
-  ],
   "clients": [
     {
       "clientId": "loamz-chat",
@@ -73,7 +51,21 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "https://{{ domain }}/*"
       },
-      "defaultClientScopes": ["basic", "web-origins", "acr", "profile", "roles", "email", "chat-api", "organization"],
+      "protocolMappers": [
+        {
+          "name": "loamz-chat audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "loamz-chat",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": ["basic", "web-origins", "acr", "profile", "roles", "email", "organization"],
       "optionalClientScopes": []
     }
   ],
