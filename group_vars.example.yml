@@ -20,3 +20,5 @@ smtp_host: ""
 smtp_port: 587
 smtp_user: ""
 smtp_from: "no-reply@loamz.com"   # the address mail comes from (must be allowed by your email provider)
+# The most all encrypted files may take together, in MB. Keep it under the free storage allowance (8000 once files are on R2).
+blob_budget_mb: 20000
