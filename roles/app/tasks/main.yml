@@ -31,8 +31,6 @@
     umask 037
     {
       echo "CHAT_AUTHORITY_SEED=$(openssl rand -hex 32)"
-      echo "CHAT_SESSION_SEED=$(openssl rand -hex 32)"
-      echo "CHAT_OTP_SECRET=$(openssl rand -hex 32)"
     } > /etc/loamz-chat/secrets.env
     chgrp loamz-chat /etc/loamz-chat/secrets.env
   args:
@@ -49,6 +47,7 @@
   notify: Restart chat-server
 
 - name: Settings
+  no_log: true
   ansible.builtin.template:
     src: settings.env.j2
     dest: /etc/loamz-chat/settings.env

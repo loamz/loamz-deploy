@@ -1,8 +1,9 @@
 [Unit]
 Description=Loamz Chat server
-After=network-online.target postgresql.service
+After=network-online.target postgresql.service keycloak.service
 Wants=network-online.target
 Requires=postgresql.service
+Wants=keycloak.service
 
 [Service]
 User=loamz-chat

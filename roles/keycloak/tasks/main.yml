@@ -1,0 +1,92 @@
+- name: Docker
+  ansible.builtin.apt:
+    name: docker.io
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Docker is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop: [/etc/keycloak, /etc/keycloak/import]
+
+# Made here, once, and kept only on this machine (backup-secrets.yml copies them to you).
+- name: Keycloak's database password and administrator password, made once
+  ansible.builtin.shell: |
+    umask 077
+    openssl rand -hex 24 > /etc/keycloak/db-password
+    openssl rand -hex 16 > /etc/keycloak/admin-password
+  args:
+    creates: /etc/keycloak/admin-password
+
+- name: Read the database password
+  ansible.builtin.slurp:
+    src: /etc/keycloak/db-password
+  register: kc_db_password
+  no_log: true
+
+- name: Keycloak's database user
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: keycloak
+    password: "{{ kc_db_password.content | b64decode | trim }}"
+  no_log: true
+
+- name: Keycloak's database
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: keycloak
+    owner: keycloak
+
+- name: The realm (people, the chat app, Google sign-in), imported the first time Keycloak starts
+  ansible.builtin.template:
+    src: realm-loamz.json.j2
+    dest: /etc/keycloak/import/realm-loamz.json
+    mode: "0600"
+
+- name: The settings Keycloak starts with
+  ansible.builtin.shell: |
+    umask 077
+    {
+      echo "KC_BOOTSTRAP_ADMIN_USERNAME=admin"
+      echo "KC_BOOTSTRAP_ADMIN_PASSWORD=$(cat /etc/keycloak/admin-password)"
+      echo "KC_DB_PASSWORD=$(cat /etc/keycloak/db-password)"
+      echo "GOOGLE_CLIENT_ID={{ google_client_id }}"
+      echo "GOOGLE_CLIENT_SECRET={{ google_client_secret }}"
+      echo "SMTP_PASSWORD={{ smtp_password }}"
+    } > /etc/keycloak/keycloak.env
+  no_log: true
+  changed_when: true
+  notify: Restart keycloak
+
+- name: Service definition
+  ansible.builtin.template:
+    src: keycloak.service.j2
+    dest: /etc/systemd/system/keycloak.service
+    mode: "0644"
+  notify: Restart keycloak
+
+- name: Running, and on at every boot
+  ansible.builtin.systemd:
+    name: keycloak
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Keycloak is answering (the first start builds itself and takes a minute or two)
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8081/realms/loamz/.well-known/openid-configuration
+  register: kc_up
+  until: kc_up.status == 200
+  retries: 60
+  delay: 5

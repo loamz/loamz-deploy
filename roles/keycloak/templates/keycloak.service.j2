@@ -1,0 +1,24 @@
+[Unit]
+Description=Keycloak (sign-in for Loamz)
+After=docker.service postgresql.service
+Requires=docker.service postgresql.service
+
+[Service]
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/docker rm -f keycloak
+# Host networking: Keycloak reaches PostgreSQL on this machine and Caddy reaches Keycloak on 127.0.0.1:8081.
+# The administrator console is only reachable through an SSH tunnel (the public address refuses it).
+ExecStart=/usr/bin/docker run --rm --name keycloak --network host \
+  --env-file /etc/keycloak/keycloak.env \
+  -v /etc/keycloak/import:/opt/keycloak/data/import:ro \
+  -e KC_HTTP_PORT=8081 -e KC_HTTP_HOST=127.0.0.1 -e KC_HTTP_ENABLED=true \
+  -e KC_PROXY_HEADERS=xforwarded \
+  -e KC_HOSTNAME=https://{{ auth_domain }} -e KC_HOSTNAME_ADMIN=http://localhost:8081 \
+  -e KC_DB=postgres -e KC_DB_URL=jdbc:postgresql://127.0.0.1:5432/keycloak -e KC_DB_USERNAME=keycloak \
+  -e KC_HEALTH_ENABLED=false -e KC_METRICS_ENABLED=false \
+  quay.io/keycloak/keycloak:26.8.1 start --import-realm
+ExecStop=/usr/bin/docker stop keycloak
+
+[Install]
+WantedBy=multi-user.target

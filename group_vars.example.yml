@@ -6,12 +6,17 @@ acme_email: ""                 # optional: Let's Encrypt writes here about expir
 sms_countries: "44,91"          # country calling codes that may sign in by phone
 # Real SMS needs a provider; until one is wired, leave "closed" and phone sign-in is off.
 sms: closed
-# Company accounts (Keycloak). Leave empty to turn them off.
-oidc_issuer: ""
-oidc_jwks_url: ""
 # Where nightly dumps are copied off the machine, as an rclone remote path (e.g. "r2:loamz-backups"). Empty keeps them on the machine only.
 backup_remote: ""
 # Access: "approval" (a new person says why they want to use it and a founder decides) or "open" (anyone who signs in is let in).
 access: approval
 # Emails who may approve others, and are let in at once, comma separated (you, to start with).
 founders: ""
+# Where people sign in (Keycloak). Add an `A` record for this name pointing at the machine, like the chat one.
+auth_domain: auth.example.com
+# Email Keycloak and the app send (confirm a work email, reset a password, "you are approved"). Any SMTP provider
+# (Resend, Brevo, Amazon SES). Leave smtp_host empty to turn email off. The password goes in group_vars/secrets.yml.
+smtp_host: ""
+smtp_port: 587
+smtp_user: ""
+smtp_from: "no-reply@loamz.com"   # the address mail comes from (must be allowed by your email provider)
