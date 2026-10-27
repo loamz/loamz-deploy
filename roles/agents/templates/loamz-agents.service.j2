@@ -1,0 +1,24 @@
+[Unit]
+Description=Loamz Agents (the agent server)
+After=network-online.target postgresql.service keycloak.service
+Wants=network-online.target
+
+[Service]
+User=loamz-agents
+Group=loamz-agents
+WorkingDirectory=/var/lib/loamz-agents
+EnvironmentFile=/etc/loamz-agents/settings.env
+ExecStart=/opt/loamz-agents/venv/bin/loamz-agents-server serve --roles all --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+# It shares the machine with chat and sign-in: it may never use more than this.
+MemoryHigh=2500M
+MemoryMax=3G
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/loamz-agents
+
+[Install]
+WantedBy=multi-user.target

@@ -14,6 +14,8 @@ rm -rf "$out" && mkdir -p "$out"
 cd "$root"
 cargo zigbuild --release -p chat-server --target "$target"
 cp "target/${target%%.*}/release/chat-server" "$out/chat-server"
+cargo zigbuild --release -p chat-bridge --target "$target"
+cp "target/${target%%.*}/release/chat-bridge" "$out/chat-bridge"
 # The legal pages and the consent step appear only when the texts are final: LEGAL=on, and then no draft marker may remain.
 legal=off
 if [ "${LEGAL:-off}" = "on" ]; then

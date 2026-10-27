@@ -1,4 +1,4 @@
-- name: Loamz Chat on one machine
+- name: Loamz on one machine
   hosts: chat
   become: true
-  roles: [base, postgres, keycloak, app, caddy, backup]
+  roles: [base, postgres, keycloak, app, agents, bridge, caddy, backup]

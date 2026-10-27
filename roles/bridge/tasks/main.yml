@@ -1,0 +1,76 @@
+# The chat bridge: each AI agent is a member of encrypted chats through its own device. One service per agent
+# (chat-bridge@NAME). Needs the agent's Keycloak client (made by the keycloak role from the `agents` list) and the agents server.
+- block:
+    - name: Bridge program
+      ansible.builtin.copy:
+        src: artifacts/chat-bridge
+        dest: /opt/loamz-agents/chat-bridge
+        mode: "0755"
+      notify: Restart chat-bridges
+
+    - name: Where each agent keeps its sealed state
+      ansible.builtin.file:
+        path: /var/lib/loamz-agents/bridge
+        state: directory
+        owner: loamz-agents
+        group: loamz-agents
+        mode: "0700"
+
+    # The agents' client secrets were written by the Keycloak role; the bridge user may read them.
+    - name: The agent client secrets are readable by the bridge
+      ansible.builtin.file:
+        path: /etc/loamz-agents/clients
+        state: directory
+        owner: root
+        group: loamz-agents
+        mode: "0750"
+        recurse: true
+
+    - name: The secret files are group-readable
+      ansible.builtin.shell: chgrp loamz-agents /etc/loamz-agents/clients/*.secret && chmod 0640 /etc/loamz-agents/clients/*.secret
+      changed_when: false
+
+    # Trust only this server's own authority key: asked here, on the machine, over the loopback.
+    - name: The authority key this server certifies devices with
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8090/api/v1/authority
+        return_content: true
+      register: authority
+
+    - name: A key that seals each agent's state, made once
+      ansible.builtin.shell: |
+        umask 037
+        openssl rand -base64 32 > /etc/loamz-agents/bridge-{{ item.name }}.key
+        chgrp loamz-agents /etc/loamz-agents/bridge-{{ item.name }}.key
+      args:
+        creates: /etc/loamz-agents/bridge-{{ item.name }}.key
+      loop: "{{ agents | default([]) }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Settings for each agent
+      ansible.builtin.template:
+        src: bridge.env.j2
+        dest: "/etc/loamz-agents/bridge-{{ item.name }}.env"
+        owner: root
+        group: loamz-agents
+        mode: "0640"
+      loop: "{{ agents | default([]) }}"
+      loop_control: { label: "{{ item.name }}" }
+      notify: Restart chat-bridges
+
+    - name: Service definition
+      ansible.builtin.template:
+        src: chat-bridge@.service.j2
+        dest: /etc/systemd/system/chat-bridge@.service
+        mode: "0644"
+      notify: Restart chat-bridges
+
+    - name: Running, and on at every boot
+      ansible.builtin.systemd:
+        name: "chat-bridge@{{ item.name }}"
+        state: started
+        enabled: true
+        daemon_reload: true
+      loop: "{{ agents | default([]) }}"
+      loop_control: { label: "{{ item.name }}" }
+  when: agents_enabled | default(false)

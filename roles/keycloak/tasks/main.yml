@@ -107,7 +107,7 @@
   ansible.builtin.script: >-
     files/settle.py --url http://127.0.0.1:8081 --password-file /etc/keycloak/admin-password
     --secret-dir /etc/loamz-agents/clients
-    {% for ag in agents | default([]) %}--agent '{{ ag.name }}:{{ ag.email }}:{{ ag.display }}:{{ ag.org | default("") }}' {% endfor %}
+    {% for ag in agents | default([]) %}--agent '{{ ag.name }}:{{ ag.email }}:{{ ag.display }}:{{ ag.org | default("loamz-agents") }}:{{ ag.chat_tenant | default("") }}' {% endfor %}
   args:
     executable: python3
   register: settled

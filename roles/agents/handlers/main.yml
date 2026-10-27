@@ -1,0 +1,5 @@
+- name: Restart loamz-agents
+  ansible.builtin.systemd:
+    name: loamz-agents
+    state: restarted
+    daemon_reload: true

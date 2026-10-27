@@ -1,0 +1,21 @@
+[Unit]
+Description=Loamz chat bridge for the agent %i
+After=network-online.target chat-server.service loamz-agents.service
+Wants=network-online.target
+
+[Service]
+User=loamz-agents
+Group=loamz-agents
+EnvironmentFile=/etc/loamz-agents/bridge-%i.env
+ExecStart=/opt/loamz-agents/chat-bridge
+Restart=always
+RestartSec=5
+MemoryMax=200M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/loamz-agents/bridge
+
+[Install]
+WantedBy=multi-user.target

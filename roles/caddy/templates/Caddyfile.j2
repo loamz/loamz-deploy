@@ -17,6 +17,17 @@
 			}
 		}
 	}
+{% if agents_enabled | default(false) %}
+	# The agent server, same address as the app (no cross-site calls). Replies stream, so nothing is buffered.
+	handle_path /agents-api/* {
+		reverse_proxy 127.0.0.1:8000 {
+			flush_interval -1
+			transport http {
+				response_header_timeout 0
+			}
+		}
+	}
+{% endif %}
 	handle /healthz {
 		reverse_proxy 127.0.0.1:8090
 	}

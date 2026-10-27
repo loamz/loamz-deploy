@@ -1,0 +1,7 @@
+- name: Restart chat-bridges
+  ansible.builtin.systemd:
+    name: "chat-bridge@{{ item.name }}"
+    state: restarted
+    daemon_reload: true
+  loop: "{{ agents | default([]) }}"
+  loop_control: { label: "{{ item.name }}" }

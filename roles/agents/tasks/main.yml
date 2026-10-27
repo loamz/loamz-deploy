@@ -1,0 +1,142 @@
+# Loamz Agents (the agent server) next to chat, on the same machine. It is installed from wheels built on the owner's computer
+# (build-agents.sh), into its own Python 3.14 environment. Skipped entirely unless `agents_enabled` is true and the secrets exist.
+- name: Agents are switched on
+  ansible.builtin.assert:
+    that: [openai_api_key is defined, openai_api_key | length > 0]
+    fail_msg: "Set openai_api_key in group_vars/secrets.yml (never in git), or set agents_enabled: false."
+  when: agents_enabled | default(false)
+
+- block:
+    - name: Program user
+      ansible.builtin.user:
+        name: loamz-agents
+        system: true
+        shell: /usr/sbin/nologin
+        home: /var/lib/loamz-agents
+        create_home: false
+
+    - name: Directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: loamz-agents
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: /opt/loamz-agents, owner: root, mode: "0755" }
+        - { path: /opt/loamz-agents/wheels, owner: root, mode: "0755" }
+        - { path: /etc/loamz-agents, owner: root, mode: "0750" }
+        - { path: /var/lib/loamz-agents, owner: loamz-agents, mode: "0750" }
+
+    # The sign-in address must reach this machine without leaving it (a machine cannot always reach its own public address).
+    - name: The sign-in name points at this machine for the agent server
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "127.0.0.1 {{ auth_domain }}"
+        regexp: "^127\\.0\\.0\\.1 {{ auth_domain | regex_escape }}$"
+
+    - name: Tools to install Python programs
+      ansible.builtin.apt:
+        name: [python3-venv, python3-pip]
+        state: present
+
+    - name: uv
+      ansible.builtin.pip:
+        name: uv
+        virtualenv: /opt/uv
+        virtualenv_command: python3 -m venv
+
+    - name: Wheels (our own packages, built by build-agents.sh)
+      ansible.posix.synchronize:
+        src: artifacts/wheels/
+        dest: /opt/loamz-agents/wheels/
+        delete: true
+        rsync_opts: ["--chmod=D755,F644"]
+      register: wheels
+
+    - name: Python 3.14 environment
+      ansible.builtin.command: /opt/uv/bin/uv venv --python 3.14 /opt/loamz-agents/venv
+      args:
+        creates: /opt/loamz-agents/venv/bin/python
+
+    - name: The agent server and what it needs
+      ansible.builtin.command: >-
+        /opt/uv/bin/uv pip install --python /opt/loamz-agents/venv/bin/python
+        --find-links /opt/loamz-agents/wheels
+        {% if wheels.changed %}--reinstall-package loamz-agents-server --reinstall-package loamz-runtime --reinstall-package loamz-engine --reinstall-package loamz-identity --reinstall-package loamz-core{% endif %}
+        loamz-agents-server "loamz-runtime[openai,postgres,tools,logging]" "loamz-identity[server]"
+      register: installed
+      changed_when: "'Installed' in installed.stderr or 'Uninstalled' in installed.stderr"
+      notify: Restart loamz-agents
+
+    - name: Database password, made once
+      ansible.builtin.shell: |
+        umask 037
+        openssl rand -hex 24 > /etc/loamz-agents/db-password
+        chgrp loamz-agents /etc/loamz-agents/db-password
+      args:
+        creates: /etc/loamz-agents/db-password
+
+    - name: Sealing key for stored conversations, made once (back it up with the other secrets)
+      ansible.builtin.shell: |
+        umask 037
+        openssl rand -base64 32 > /etc/loamz-agents/sealing.key
+        chgrp loamz-agents /etc/loamz-agents/sealing.key
+      args:
+        creates: /etc/loamz-agents/sealing.key
+
+    - name: Read the database password
+      ansible.builtin.slurp: { src: /etc/loamz-agents/db-password }
+      register: agents_db_password
+      no_log: true
+
+    - name: Read the sealing key
+      ansible.builtin.slurp: { src: /etc/loamz-agents/sealing.key }
+      register: agents_sealing
+      no_log: true
+
+    - name: Database user
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: loamz_agents
+        password: "{{ agents_db_password.content | b64decode | trim }}"
+      no_log: true
+
+    - name: Database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: loamz_agents
+        owner: loamz_agents
+
+    - name: Settings
+      no_log: true
+      ansible.builtin.template:
+        src: settings.env.j2
+        dest: /etc/loamz-agents/settings.env
+        owner: root
+        group: loamz-agents
+        mode: "0640"
+      notify: Restart loamz-agents
+
+    - name: Service definition
+      ansible.builtin.template:
+        src: loamz-agents.service.j2
+        dest: /etc/systemd/system/loamz-agents.service
+        mode: "0644"
+      notify: Restart loamz-agents
+
+    - name: Running, and on at every boot
+      ansible.builtin.systemd:
+        name: loamz-agents
+        state: started
+        enabled: true
+        daemon_reload: true
+
+    - name: It answers
+      ansible.builtin.uri:
+        url: http://127.0.0.1:8000/health
+      register: agents_up
+      until: agents_up.status == 200
+      retries: 30
+      delay: 5
+  when: agents_enabled | default(false)

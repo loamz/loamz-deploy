@@ -24,8 +24,9 @@ def main() -> int:
     ap.add_argument("--password-file")
     ap.add_argument("--realm", default="loamz")
     ap.add_argument("--client", default="loamz-chat")
-    # An AI agent's own Keycloak client (a service account): NAME:EMAIL:DISPLAY_NAME[:ORGANIZATION_ALIAS]. Repeat for each agent.
-    # The organization is the tenant the agent serves; leave it empty for an agent that serves personal accounts.
+    # An AI agent's own Keycloak client (a service account): NAME:EMAIL:DISPLAY_NAME:ORGANIZATION[:CHAT_TENANT]. Repeat per agent.
+    # ORGANIZATION is the organization its token names (the agents server needs every token to name one; it is created if
+    # missing). CHAT_TENANT is "personal" for an agent that serves personal accounts in chat, else empty (it serves ORGANIZATION).
     ap.add_argument("--agent", action="append", default=[])
     # Where each agent client's secret is written (one file per agent, mode 600). Secrets are never printed.
     ap.add_argument("--secret-dir", default="")
@@ -126,6 +127,7 @@ def main() -> int:
             raise SystemExit(f"--agent wants NAME:EMAIL:DISPLAY_NAME[:ORGANIZATION], got {spec!r}")
         name, email, display = parts[0], parts[1], parts[2]
         org = parts[3] if len(parts) > 3 else ""
+        chat_tenant = parts[4] if len(parts) > 4 else ""
         client_id = f"agent-{name}"
         _, found = call("GET", f"{r}/clients?clientId={client_id}", token=tok)
         if not found:
@@ -147,10 +149,22 @@ def main() -> int:
         mapper("agent kind", "oidc-hardcoded-claim-mapper", {"claim.name": "loamz_kind", "claim.value": "agent",
                "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "false",
                "userinfo.token.claim": "false"})
+        if chat_tenant:
+            mapper("chat tenant", "oidc-hardcoded-claim-mapper", {"claim.name": "loamz_chat_tenant", "claim.value": chat_tenant,
+                   "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "false",
+                   "userinfo.token.claim": "false"})
         mapper("chat audience", "oidc-audience-mapper", {"included.custom.audience": a.client, "access.token.claim": "true",
                "id.token.claim": "false"})
         mapper("agents audience", "oidc-audience-mapper", {"included.custom.audience": a.agents_audience,
                "access.token.claim": "true", "id.token.claim": "false"})
+        # The token carries the organization claim only if the client has the organization scope.
+        _, have_scopes = call("GET", f"{r}/clients/{cid}/default-client-scopes", token=tok)
+        if not any(x["name"] == "organization" for x in have_scopes or []):
+            _, all_scopes = call("GET", f"{r}/client-scopes", token=tok)
+            wanted = [x for x in all_scopes or [] if x["name"] == "organization"]
+            if wanted:
+                call("PUT", f"{r}/clients/{cid}/default-client-scopes/{wanted[0]['id']}", token=tok)
+                changed.append(f"{client_id}: organization scope")
         # The service account is a user: give it the address people will add it by, and a name.
         _, su = call("GET", f"{r}/clients/{cid}/service-account-user", token=tok)
         want = {"email": email, "emailVerified": True, "firstName": display, "lastName": ""}
@@ -163,7 +177,13 @@ def main() -> int:
             _, orgs = call("GET", f"{r}/organizations?search={urllib.parse.quote(org)}&exact=true", token=tok)
             match = [o for o in orgs or [] if o.get("alias") == org]
             if not match:
-                raise SystemExit(f"organization {org!r} does not exist (needed by agent {name})")
+                call("POST", f"{r}/organizations", token=tok, data={"name": org, "alias": org, "enabled": True,
+                     "domains": [{"name": f"{org}.agents.invalid", "verified": False}]})
+                changed.append(f"organization {org}")
+                _, orgs = call("GET", f"{r}/organizations?search={urllib.parse.quote(org)}&exact=true", token=tok)
+                match = [o for o in orgs or [] if o.get("alias") == org]
+                if not match:
+                    raise SystemExit(f"organization {org!r} could not be created (needed by agent {name})")
             _, members = call("GET", f"{r}/organizations/{match[0]['id']}/members?max=1000", token=tok)
             if not any(m["id"] == su["id"] for m in members or []):
                 call("POST", f"{r}/organizations/{match[0]['id']}/members", data=su["id"], token=tok)
@@ -172,6 +192,7 @@ def main() -> int:
         if a.secret_dir:
             import os
             os.makedirs(a.secret_dir, mode=0o750, exist_ok=True)
+            os.chmod(a.secret_dir, 0o750)
             _, sec = call("GET", f"{r}/clients/{cid}/client-secret", token=tok)
             path = os.path.join(a.secret_dir, f"{client_id}.secret")
             value = (sec or {}).get("value", "")
