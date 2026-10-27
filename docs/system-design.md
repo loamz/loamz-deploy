@@ -19,8 +19,8 @@ Rule: Chat, Sign-in and Agents are small and fit anywhere. **Data decides the di
 
 | Resource | Allowance | Notes |
 |---|---|---|
-| Oracle compute (Arm) | 4 cores, 24 GB total | one VM at 2 cores / 12 GB today; the other half is unused |
-| Oracle block storage | **200 GB total, boot disks included** | VM1 boot is 100 GB, so **about 100 GB is left** for a data volume or a second VM |
+| Oracle compute (Arm) | **2 cores, 12 GB total (the owner's account limit)** | one VM uses all of it; there is no second free VM |
+| Oracle block storage | **200 GB total, boot disks included** | VM1 boot is 100 GB, so **about 100 GB is left** for a data volume (confirm the 200 GB total in the console) |
 | Oracle Object Storage | 20 GB (Standard, Infrequent, Archive combined; sources vary) | Archive: 90-day minimum, slow retrieval |
 | Oracle outbound data | 10 TB/month | fine |
 | Cloudflare R2 | 10 GB, then $0.015/GB-month, **no download fees** | best place for what people download |
@@ -56,15 +56,17 @@ Data moves down the tiers by age (Iceberg partitions by month; compaction job al
 
 ## 5. Compute placement
 
-- One VM (2 cores / 12 GB) holds Chat, Keycloak, Agents and Postgres: about 3 GB in use today.
-- Data platform adds about 5 GB (SeaweedFS, controller, one worker, UI). That fits in 12 GB but leaves little spare, so **heavy ingest and backfills must not run on the VM**: do them on your own machine, write Parquet, then upload. The VM only serves queries.
-- If CPU or memory pressure shows up, create the **second free VM (2 cores / 12 GB) for Data** and move SeaweedFS and workers there. Its boot disk comes out of the same 200 GB, so then the data volume is 50 GB and warm/cold tiers carry more.
+- There is **one VM: 2 cores, 12 GB, all of it**. Chat, Keycloak, Agents and Postgres use about 3 GB today.
+- The data platform must be lean on that box: SeaweedFS plus one query worker (DuckDB/Polars) with a hard memory cap (about 4 to 5 GB), no always-on extras, workspace UI only when needed.
+- **Heavy work never runs on the VM:** backfills, ingest, compaction of large tables and sorts run on your own machine (or a paid burst VM for an hour, a few cents), write Parquet, and upload. The VM only serves queries. (An unbounded sort already took down the dev box once.)
+- Memory plan: Postgres 2 GB, Keycloak 1.5 GB, Chat and bridge 0.5 GB, Agents 1.5 GB, Caddy 0.1 GB, Data 4.5 GB, headroom about 2 GB. Alarms at 85% memory and disk.
+- When this is outgrown, the answer is a small paid VM for Data (a few dollars a month), not squeezing more in.
 
 ## 6. Decisions to make (in order)
 
 1. How fine is the stock data (daily, 5-minute, 1-minute, ticks), how many instruments, how many years? This sets the tier sizes above.
 2. Accept about $2 to $3 a month once data passes the free tiers (200 GB on B2 is about $1.20, on R2 about $3)? The alternative is dropping fine-grained history.
-3. One VM now, second VM only when measurements say so (recommended).
+3. One VM only; heavy ingest runs elsewhere; a small paid Data VM only when measurements say so (recommended).
 
 ## 7. Plan after the decisions
 
