@@ -8,21 +8,26 @@ set -eu
 dir=/var/backups/loamz-chat
 key=/etc/loamz-chat/backup.key
 stamp=$(date +%Y%m%d-%H%M)
-dump="$dir/chat-$stamp.dump"
-runuser -u postgres -- pg_dump --format=custom chat > "$dump"
-openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass "file:$key" -in "$dump" -out "$dump.enc"
-find "$dir" -name 'chat-*.dump*' -mtime +14 -delete
+# Every database we run: chat messages, sign-in accounts (Keycloak) and the agents. Each is dumped and encrypted separately.
+dumps=""
+for db in chat keycloak loamz_agents; do
+  dump="$dir/$db-$stamp.dump"
+  runuser -u postgres -- pg_dump --format=custom "$db" > "$dump"
+  openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass "file:$key" -in "$dump" -out "$dump.enc"
+  dumps="$dumps $dump.enc"
+done
+find "$dir" -name '*.dump*' -mtime +14 -delete
 {% set remote = backup_remote | default("b2:" ~ b2_bucket if b2_key | length > 0 else "") %}
 {% if remote %}
 # Daily copies stay 7 days; the first of each month is also kept under monthly/ for a year.
-rclone copy "$dump.enc" "{{ remote }}/db/daily/"
+for f in $dumps; do rclone copy "$f" "{{ remote }}/db/daily/"; done
 rclone delete "{{ remote }}/db/daily/" --min-age 7d
 if [ "$(date +%d)" = "01" ]; then
-  rclone copy "$dump.enc" "{{ remote }}/db/monthly/"
+  for f in $dumps; do rclone copy "$f" "{{ remote }}/db/monthly/"; done
   rclone delete "{{ remote }}/db/monthly/" --min-age 366d
 {% if oci_namespace | default("") %}
   # A second monthly copy in Oracle Archive (cheap, slow to read back, kept at least 90 days). The VM writes with its own identity, no key.
-  rclone copy "$dump.enc" "oci:{{ oci_archive_bucket }}/db/monthly/"
+  for f in $dumps; do rclone copy "$f" "oci:{{ oci_archive_bucket }}/db/monthly/"; done
 {% endif %}
 fi
 # Only small files (photos, voice notes): anything over 10 MB is left out to save space.
