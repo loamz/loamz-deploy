@@ -13,6 +13,36 @@
   args:
     creates: /etc/loamz-chat/backup.key
 
+# Cloudflare R2: keys come from group_vars/all/r2.env (git-ignored, never printed). Without that file there is no off-machine copy.
+- name: R2 credentials, if present
+  ansible.builtin.set_fact:
+    r2_key: "{{ lookup('ansible.builtin.ini', 'ACCESS_KEY_ID type=properties file=' ~ playbook_dir ~ '/group_vars/all/r2.env', errors='ignore') }}"
+    r2_secret: "{{ lookup('ansible.builtin.ini', 'SECRET_ACCESS_KEY type=properties file=' ~ playbook_dir ~ '/group_vars/all/r2.env', errors='ignore') }}"
+    r2_endpoint: "{{ lookup('ansible.builtin.ini', 'DEFAULT_END_POINT type=properties file=' ~ playbook_dir ~ '/group_vars/all/r2.env', errors='ignore') }}"
+  no_log: true
+
+- name: rclone config folder
+  ansible.builtin.file:
+    path: /root/.config/rclone
+    state: directory
+    mode: "0700"
+
+- name: rclone remote for R2
+  ansible.builtin.copy:
+    dest: /root/.config/rclone/rclone.conf
+    content: |
+      [r2]
+      type = s3
+      provider = Cloudflare
+      access_key_id = {{ r2_key }}
+      secret_access_key = {{ r2_secret }}
+      endpoint = {{ r2_endpoint | regex_replace('/+$', '') }}
+      acl = private
+      no_check_bucket = true
+    mode: "0600"
+  when: r2_key | length > 0
+  no_log: true
+
 - name: Restore script
   ansible.builtin.template:
     src: restore.sh.j2

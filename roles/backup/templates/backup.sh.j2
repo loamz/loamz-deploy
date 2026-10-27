@@ -12,14 +12,15 @@ dump="$dir/chat-$stamp.dump"
 runuser -u postgres -- pg_dump --format=custom chat > "$dump"
 openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass "file:$key" -in "$dump" -out "$dump.enc"
 find "$dir" -name 'chat-*.dump*' -mtime +14 -delete
-{% if backup_remote | default("") %}
+{% set remote = backup_remote | default("r2:loamz-backups" if r2_key | length > 0 else "") %}
+{% if remote %}
 # Daily copies stay 7 days; the first of each month is also kept under monthly/ for a year.
-rclone copy "$dump.enc" "{{ backup_remote }}/db/daily/"
-rclone delete "{{ backup_remote }}/db/daily/" --min-age 7d
+rclone copy "$dump.enc" "{{ remote }}/db/daily/"
+rclone delete "{{ remote }}/db/daily/" --min-age 7d
 if [ "$(date +%d)" = "01" ]; then
-  rclone copy "$dump.enc" "{{ backup_remote }}/db/monthly/"
-  rclone delete "{{ backup_remote }}/db/monthly/" --min-age 366d
+  rclone copy "$dump.enc" "{{ remote }}/db/monthly/"
+  rclone delete "{{ remote }}/db/monthly/" --min-age 366d
 fi
 # Only small files (photos, voice notes): anything over 10 MB is left out to save space.
-rclone sync /var/lib/loamz-chat/blobs "{{ backup_remote }}/blobs/" --immutable --transfers 4 --max-size 10M
+rclone sync /var/lib/loamz-chat/blobs "{{ remote }}/blobs/" --immutable --transfers 4 --max-size 10M
 {% endif %}

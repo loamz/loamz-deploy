@@ -9,5 +9,5 @@ tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass "file:$key" -in "$file" -out "$tmp"
 runuser -u postgres -- createdb "$db"
-runuser -u postgres -- pg_restore --no-owner --dbname "$db" "$tmp"
+runuser -u postgres -- pg_restore --no-owner --dbname "$db" < "$tmp"
 echo "restored into database $db"
