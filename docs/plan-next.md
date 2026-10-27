@@ -17,7 +17,7 @@ Goal: everything already built is connected, safe, backed up and documented; the
 |---|---|---|---|
 | 7 | Marketplace connected to the server (X18): installs, on/off, permissions are real | C (or X) | turning a skill off changes what Helper can do; test |
 | 8 | Assistant tools per installs: web research, files | C | an installed tool is used, a blocked one never |
-| 9 | Google connectors (Drive, Gmail, Calendar) via OAuth | Owner (Google Cloud client) then C | a person connects an account and Helper reads a file; consent shows recipients |
+| 9 | Connectors through a generic MCP client (Notion, Todoist, Linear first; vendor-hosted only; trusted catalog with logo, publisher and trust label). Google (Gmail, Drive, Calendar) is blocked: its MCP servers need the Workspace Developer Preview, which requires a Workspace email the owner does not have | C | a person connects Notion/Todoist/Linear, Helper uses it with approvals; tokens encrypted |
 | 10 | Agent directory endpoint and usage numbers in the Agents tab | C | picker lists real agents; ring shows real usage |
 | 11 | Focused UI passes: chat pane, bubbles, composer, list; small screens | A + C review | WhatsApp-style comparison list closed |
 | 12 | CI: design-sync check and browser scripts in GitHub Actions; fix flaky safety script | C | green on a clean clone |
@@ -42,4 +42,4 @@ Legal blanks and `LEGAL=on` (owner); Android signing key and APK (owner + X); Re
 Buy only when memory stays above 85% or inference jobs slow chat. First choice: InterServer 4 slices ($12/month). Data and agents already assume separate machines, so moving the data platform or inference there is a deploy change, not a rewrite.
 
 ## Owner checklist (accounts and decisions)
-1. Backblaze B2 account, bucket and key. 2. Oracle: Archive bucket, attach `/data` volume, check Billing. 3. Resend domain verification. 4. Google Cloud OAuth client. 5. Answer the four model questions. 6. Legal blanks. 7. Android signing key. 8. Try the app on real phones.
+1. Backblaze B2 account, bucket and key. 2. Oracle: Archive bucket, attach `/data` volume, check Billing. 3. Resend domain verification. 4. Test accounts for Notion, Todoist and Linear (free). 5. Answer the four model questions. 6. Legal blanks. 7. Android signing key. 8. Try the app on real phones.
