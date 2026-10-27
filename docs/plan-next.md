@@ -7,7 +7,7 @@ Goal: everything already built is connected, safe, backed up and documented; the
 |---|---|---|---|
 | 1 | Close the consent gap: agents can only be added through the consent flow (engine rule, not screen rule) | C | adding an agent by email through New chat or Add person is refused with a clear message; test |
 | 2 | Backups: daily to B2, monthly to Oracle Archive, local 14 days; R2 holds no backups; restore tested from each | Owner (accounts) then C | one restore passes from each copy; key copied with `backup-secrets.yml` |
-| 3 | `/data` block volume (about 100 GB); move Postgres and file storage on it; weekly volume backup | C (owner attaches in console) | VM rebuild keeps data |
+| 3 | Boot volume grown to 150 GB (no separate volume needed; 50 GB of the free 200 GB kept in reserve) | Owner + C | done 2026-10-27, `df` shows 145 GB |
 | 4 | Media on R2 with short-lived links for chat members only | C | photo and voice e2e pass; non-member gets 403 |
 | 5 | Oracle Billing check, alarms (disk 85%, memory 85%), uptime checker and status page | Owner + C | alert email arrives on a test |
 | 6 | Real-device pass on Android and iPhone: install, push, mic, keyboard, rail | Owner + A | checklist green, bugs filed |
