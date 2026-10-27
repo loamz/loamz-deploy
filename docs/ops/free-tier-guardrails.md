@@ -11,7 +11,7 @@ places (marked "confirm"). Always check the provider's own page before relying o
 
 | Provider and item | Free allowance | What we use now | Hard stop |
 |---|---|---|---|
-| Oracle Arm machines (A1) | 4 cores and 24 GB in total | 1 machine, 4 cores, 24 GB: **the whole allowance** | `scripts/oci-free-check.sh` fails if a second Arm machine appears. **We cannot add any Arm machine.** |
+| Oracle Arm machines (A1) | Oracle's page (2026-10-27): 1,500 OCPU-hours and 9,000 GB-hours a month, i.e. 2 cores and 12 GB; older accounts may still have 4 cores and 24 GB | 1 machine, 4 cores, 24 GB: **over the published allowance. Check Billing > Cost Analysis; if it shows a charge, shrink the machine to 2 cores and 12 GB** | `scripts/oci-free-check.sh` fails if a second Arm machine appears. **We cannot add any Arm machine.** |
 | Oracle disks (boot plus block) | 200 GB in total (confirm: some pages say 100 GB for block) | 100 GB boot, no block volume | The check script warns above 100 GB and fails above 200 GB |
 | Oracle volume backups | 5 | 0 | Script fails above 5 |
 | Oracle outbound data | 10 TB a month | tiny | Watch Cost Analysis |
