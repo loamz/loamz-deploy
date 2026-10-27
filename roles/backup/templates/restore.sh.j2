@@ -1,0 +1,13 @@
+#!/bin/sh
+# Restores an encrypted dump into a database. Usage: loamz-chat-restore <chat-....dump.enc> [database name]
+# The default database is "chat_restored" so a live database is never overwritten by accident.
+set -eu
+file=${1:?usage: loamz-chat-restore <chat-....dump.enc> [database]}
+db=${2:-chat_restored}
+key=/etc/loamz-chat/backup.key
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass "file:$key" -in "$file" -out "$tmp"
+runuser -u postgres -- createdb "$db"
+runuser -u postgres -- pg_restore --no-owner --dbname "$db" "$tmp"
+echo "restored into database $db"

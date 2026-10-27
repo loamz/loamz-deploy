@@ -1,14 +1,24 @@
 #!/bin/sh
-# Dumps the database (and the encrypted files' index with it), keeps two weeks, and copies off the machine when a remote is set.
-# The files themselves are ciphertext in /var/lib/loamz-chat/blobs; they are copied too. Nothing here can be read without the
-# people's own keys, but the device-authority key in /etc/loamz-chat/secrets.env is NOT in this backup: keep it separately
-# (ansible-playbook backup-secrets.yml).
+# Dumps the database, keeps two weeks here, and copies an ENCRYPTED copy off the machine when a remote is set.
+# The key lives in /etc/loamz-chat/backup.key (made once by Ansible; ansible-playbook backup-secrets.yml copies it to the owner).
+# Without that key the off-machine copy cannot be read, so keep it in your password manager. Files in blobs/ are already
+# ciphertext (the people's own keys), so they are copied as they are. The device-authority key is NOT in this backup either.
+# Restore with loamz-chat-restore (same folder), see docs/runbooks/restore-database.md.
 set -eu
 dir=/var/backups/loamz-chat
+key=/etc/loamz-chat/backup.key
 stamp=$(date +%Y%m%d-%H%M)
-runuser -u postgres -- pg_dump --format=custom chat > "$dir/chat-$stamp.dump"
-find "$dir" -name 'chat-*.dump' -mtime +14 -delete
+dump="$dir/chat-$stamp.dump"
+runuser -u postgres -- pg_dump --format=custom chat > "$dump"
+openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass "file:$key" -in "$dump" -out "$dump.enc"
+find "$dir" -name 'chat-*.dump*' -mtime +14 -delete
 {% if backup_remote | default("") %}
-rclone copy "$dir/chat-$stamp.dump" "{{ backup_remote }}/db/"
+# Daily copies stay 7 days; the first of each month is also kept under monthly/ for a year.
+rclone copy "$dump.enc" "{{ backup_remote }}/db/daily/"
+rclone delete "{{ backup_remote }}/db/daily/" --min-age 7d
+if [ "$(date +%d)" = "01" ]; then
+  rclone copy "$dump.enc" "{{ backup_remote }}/db/monthly/"
+  rclone delete "{{ backup_remote }}/db/monthly/" --min-age 366d
+fi
 rclone sync /var/lib/loamz-chat/blobs "{{ backup_remote }}/blobs/" --immutable --transfers 4
 {% endif %}

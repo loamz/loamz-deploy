@@ -6,6 +6,19 @@
     group: postgres
     mode: "0700"
 
+- name: The backup key (made once, never replaced)
+  ansible.builtin.shell: |
+    umask 077
+    [ -s /etc/loamz-chat/backup.key ] || openssl rand -base64 48 > /etc/loamz-chat/backup.key
+  args:
+    creates: /etc/loamz-chat/backup.key
+
+- name: Restore script
+  ansible.builtin.template:
+    src: restore.sh.j2
+    dest: /usr/local/bin/loamz-chat-restore
+    mode: "0750"
+
 - name: Nightly dump script
   ansible.builtin.template:
     src: backup.sh.j2

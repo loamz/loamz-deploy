@@ -110,3 +110,10 @@ Execute this checklist on the first Monday of every month. Record results in `do
   ```
 - [ ] **5. Authority Key Backup:** Verify that `secrets-backup/` containing the device-authority key remains accessible in the owner's password manager or encrypted offline storage.
 - [ ] **6. Record Sign-off:** Log the drill date, backup timestamp, table row counts, and tester name.
+
+## Encrypted backups (from 2026-10-27)
+Nightly dumps are encrypted with `/etc/loamz-chat/backup.key` (made once on the server). **Copy that key to your password manager**
+(`ansible-playbook backup-secrets.yml` fetches it into `deploy/ansible/secrets-backup/`). Without it an off-machine copy cannot be opened.
+To restore on any machine that has the key at that path: `sudo loamz-chat-restore chat-YYYYMMDD-HHMM.dump.enc [database]`
+(default database `chat_restored`; it refuses to touch a live one). Then point the server at it, or copy what you need out.
+Off-machine copies (when `backup_remote` is set) keep 7 daily dumps and 12 monthly ones.
