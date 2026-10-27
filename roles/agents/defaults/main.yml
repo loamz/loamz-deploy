@@ -1,0 +1,2 @@
+# The model key comes from the environment of the computer running Ansible (OPENAI_API_KEY); group_vars/secrets.yml may override it.
+openai_api_key: "{{ lookup('env', 'OPENAI_API_KEY') }}"
