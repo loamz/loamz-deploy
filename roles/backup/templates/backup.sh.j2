@@ -20,5 +20,6 @@ if [ "$(date +%d)" = "01" ]; then
   rclone copy "$dump.enc" "{{ backup_remote }}/db/monthly/"
   rclone delete "{{ backup_remote }}/db/monthly/" --min-age 366d
 fi
-rclone sync /var/lib/loamz-chat/blobs "{{ backup_remote }}/blobs/" --immutable --transfers 4
+# Only small files (photos, voice notes): anything over 10 MB is left out to save space.
+rclone sync /var/lib/loamz-chat/blobs "{{ backup_remote }}/blobs/" --immutable --transfers 4 --max-size 10M
 {% endif %}
