@@ -12,7 +12,7 @@ dump="$dir/chat-$stamp.dump"
 runuser -u postgres -- pg_dump --format=custom chat > "$dump"
 openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass "file:$key" -in "$dump" -out "$dump.enc"
 find "$dir" -name 'chat-*.dump*' -mtime +14 -delete
-{% set remote = backup_remote | default("r2:loamz-backups" if r2_key | length > 0 else "") %}
+{% set remote = backup_remote | default("b2:" ~ b2_bucket if b2_key | length > 0 else "") %}
 {% if remote %}
 # Daily copies stay 7 days; the first of each month is also kept under monthly/ for a year.
 rclone copy "$dump.enc" "{{ remote }}/db/daily/"
