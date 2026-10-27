@@ -20,6 +20,10 @@ rclone delete "{{ remote }}/db/daily/" --min-age 7d
 if [ "$(date +%d)" = "01" ]; then
   rclone copy "$dump.enc" "{{ remote }}/db/monthly/"
   rclone delete "{{ remote }}/db/monthly/" --min-age 366d
+{% if oci_namespace | default("") %}
+  # A second monthly copy in Oracle Archive (cheap, slow to read back, kept at least 90 days). The VM writes with its own identity, no key.
+  rclone copy "$dump.enc" "oci:{{ oci_archive_bucket }}/db/monthly/"
+{% endif %}
 fi
 # Only small files (photos, voice notes): anything over 10 MB is left out to save space.
 rclone sync /var/lib/loamz-chat/blobs "{{ remote }}/blobs/" --immutable --transfers 4 --max-size 10M

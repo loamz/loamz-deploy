@@ -13,6 +13,26 @@
   args:
     creates: /etc/loamz-chat/backup.key
 
+# Ubuntu's rclone is built without the Oracle backend, so install the official build (pinned) beside it.
+- name: unzip
+  ansible.builtin.apt:
+    name: unzip
+    state: present
+
+- name: Official rclone
+  ansible.builtin.unarchive:
+    src: "https://downloads.rclone.org/v{{ rclone_version }}/rclone-v{{ rclone_version }}-linux-arm64.zip"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/rclone-v{{ rclone_version }}-linux-arm64/rclone"
+
+- name: Put it first on the path
+  ansible.builtin.copy:
+    src: "/tmp/rclone-v{{ rclone_version }}-linux-arm64/rclone"
+    dest: /usr/local/bin/rclone
+    mode: "0755"
+    remote_src: true
+
 # Backblaze B2 (S3 API): keys come from group_vars/all/b2.env (git-ignored, never printed). Without that file there is no off-machine copy.
 - name: B2 credentials, if present
   ansible.builtin.set_fact:
@@ -39,6 +59,15 @@
       secret_access_key = {{ b2_secret }}
       endpoint = {{ b2_endpoint if '://' in b2_endpoint else 'https://' ~ b2_endpoint }}
       acl = private
+      no_check_bucket = true
+
+      [oci]
+      type = oracleobjectstorage
+      provider = instance_principal_auth
+      namespace = {{ oci_namespace }}
+      region = {{ oci_region }}
+      compartment = {{ oci_compartment | default('') }}
+      storage_tier = Archive
       no_check_bucket = true
     mode: "0600"
   when: b2_key | length > 0
