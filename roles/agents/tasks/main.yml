@@ -54,8 +54,12 @@
         rsync_opts: ["--chmod=D755,F644"]
       register: wheels
 
+    # uv's own Python goes in a shared folder: the default is root's home, which the service user cannot enter.
     - name: Python 3.14 environment
-      ansible.builtin.command: /opt/uv/bin/uv venv --python 3.14 /opt/loamz-agents/venv
+      ansible.builtin.shell: |
+        export UV_PYTHON_INSTALL_DIR=/opt/uv-python
+        /opt/uv/bin/uv venv --python 3.14 /opt/loamz-agents/venv
+        chmod -R a+rX /opt/uv-python /opt/loamz-agents/venv
       args:
         creates: /opt/loamz-agents/venv/bin/python
 
@@ -63,11 +67,19 @@
       ansible.builtin.command: >-
         /opt/uv/bin/uv pip install --python /opt/loamz-agents/venv/bin/python
         --find-links /opt/loamz-agents/wheels
-        {% if wheels.changed %}--reinstall-package loamz-agents-server --reinstall-package loamz-runtime --reinstall-package loamz-engine --reinstall-package loamz-identity --reinstall-package loamz-core{% endif %}
-        loamz-agents-server "loamz-runtime[openai,postgres,tools,logging]" "loamz-identity[server]"
+        {% if wheels.changed %}--reinstall-package loamz-agents-server --reinstall-package loamz-runtime --reinstall-package loamz-engine --reinstall-package loamz-identity --reinstall-package loamz-core --reinstall-package loamz-data{% endif %}
+        loamz-agents-server "loamz-runtime[openai,anthropic,gemini,redis,mcp,tools,data,code,postgres,logging]" "loamz-identity[server]" loamz-data
+      environment:
+        UV_PYTHON_INSTALL_DIR: /opt/uv-python
       register: installed
       changed_when: "'Installed' in installed.stderr or 'Uninstalled' in installed.stderr"
       notify: Restart loamz-agents
+
+    - name: The installed program is readable by the service user
+      ansible.builtin.file:
+        path: /opt/loamz-agents/venv
+        recurse: true
+        mode: "a+rX"
 
     - name: Database password, made once
       ansible.builtin.shell: |

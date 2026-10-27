@@ -9,5 +9,5 @@ agents=${AGENTS_REPO:-$here/../loamz-agents}; data=${DATA_REPO:-$here/../loamz-d
 out="$here/artifacts/wheels"; rm -rf "$out"; mkdir -p "$out"
 (cd "$agents" && uv build --package loamz-agents-server --wheel -o "$out" && uv build --package loamz-runtime --wheel -o "$out")
 (cd "$data" && uv build --package loamz-engine --wheel -o "$out")
-(cd "$py" && uv build --package loamz-core --wheel -o "$out" && uv build --package loamz-identity --wheel -o "$out")
+(cd "$py" && uv build --package loamz-core --wheel -o "$out" && uv build --package loamz-identity --wheel -o "$out" && uv build --package loamz-data --wheel -o "$out")
 ls -1 "$out"
