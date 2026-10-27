@@ -24,6 +24,13 @@ def main() -> int:
     ap.add_argument("--password-file")
     ap.add_argument("--realm", default="loamz")
     ap.add_argument("--client", default="loamz-chat")
+    # An AI agent's own Keycloak client (a service account): NAME:EMAIL:DISPLAY_NAME[:ORGANIZATION_ALIAS]. Repeat for each agent.
+    # The organization is the tenant the agent serves; leave it empty for an agent that serves personal accounts.
+    ap.add_argument("--agent", action="append", default=[])
+    # Where each agent client's secret is written (one file per agent, mode 600). Secrets are never printed.
+    ap.add_argument("--secret-dir", default="")
+    # The audience of the agents API; chat tokens must carry it too so the web app can call the agents server.
+    ap.add_argument("--agents-audience", default="loamz-agents")
     a = ap.parse_args()
     password = a.password or open(a.password_file).read().strip()
     changed: list[str] = []
@@ -99,6 +106,80 @@ def main() -> int:
             if not any(x["id"] == role["id"] for x in have or []):
                 call("POST", f"{r}/roles-by-id/{default_id}/composites", data=[role], token=tok)
                 changed.append("everyone may delete their own account")
+
+    # 5. The chat app's token also carries the agents API audience, so people can call the agents server with it.
+    if clients:
+        c = clients[0]
+        if not any(m["name"] == "agents audience" for m in c.get("protocolMappers", [])):
+            call("POST", f"{r}/clients/{c['id']}/protocol-mappers/models", token=tok, data={
+                "name": "agents audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+                "consentRequired": False,
+                "config": {"included.custom.audience": a.agents_audience, "id.token.claim": "false",
+                           "access.token.claim": "true"}})
+            changed.append("agents audience in the chat token")
+
+    # 6. Each AI agent has its own service-account client. Its token says `loamz_kind: agent` (only this client's mapper can set
+    #    that, so no person can pretend to be an agent), is meant for chat and for the agents API, and names its organization.
+    for spec in a.agent:
+        parts = spec.split(":")
+        if len(parts) < 3:
+            raise SystemExit(f"--agent wants NAME:EMAIL:DISPLAY_NAME[:ORGANIZATION], got {spec!r}")
+        name, email, display = parts[0], parts[1], parts[2]
+        org = parts[3] if len(parts) > 3 else ""
+        client_id = f"agent-{name}"
+        _, found = call("GET", f"{r}/clients?clientId={client_id}", token=tok)
+        if not found:
+            call("POST", f"{r}/clients", token=tok, data={
+                "clientId": client_id, "name": display, "enabled": True, "protocol": "openid-connect",
+                "publicClient": False, "serviceAccountsEnabled": True, "standardFlowEnabled": False,
+                "directAccessGrantsEnabled": False, "implicitFlowEnabled": False, "clientAuthenticatorType": "client-secret"})
+            changed.append(f"agent client {client_id}")
+            _, found = call("GET", f"{r}/clients?clientId={client_id}", token=tok)
+        cid = found[0]["id"]
+        have = {m["name"] for m in found[0].get("protocolMappers", [])}
+
+        def mapper(mname, kind, config):
+            if mname not in have:
+                call("POST", f"{r}/clients/{cid}/protocol-mappers/models", token=tok, data={
+                    "name": mname, "protocol": "openid-connect", "protocolMapper": kind, "consentRequired": False,
+                    "config": config})
+                changed.append(f"{client_id}: {mname}")
+        mapper("agent kind", "oidc-hardcoded-claim-mapper", {"claim.name": "loamz_kind", "claim.value": "agent",
+               "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "false",
+               "userinfo.token.claim": "false"})
+        mapper("chat audience", "oidc-audience-mapper", {"included.custom.audience": a.client, "access.token.claim": "true",
+               "id.token.claim": "false"})
+        mapper("agents audience", "oidc-audience-mapper", {"included.custom.audience": a.agents_audience,
+               "access.token.claim": "true", "id.token.claim": "false"})
+        # The service account is a user: give it the address people will add it by, and a name.
+        _, su = call("GET", f"{r}/clients/{cid}/service-account-user", token=tok)
+        want = {"email": email, "emailVerified": True, "firstName": display, "lastName": ""}
+        if any((su.get(k) or ("" if isinstance(v, str) else None)) != v for k, v in want.items()):
+            su.update(want)
+            call("PUT", f"{r}/users/{su['id']}", data=su, token=tok)
+            changed.append(f"{client_id}: address and name")
+        # Exactly one organization (the tenant), or none for personal accounts.
+        if org:
+            _, orgs = call("GET", f"{r}/organizations?search={urllib.parse.quote(org)}&exact=true", token=tok)
+            match = [o for o in orgs or [] if o.get("alias") == org]
+            if not match:
+                raise SystemExit(f"organization {org!r} does not exist (needed by agent {name})")
+            _, members = call("GET", f"{r}/organizations/{match[0]['id']}/members?max=1000", token=tok)
+            if not any(m["id"] == su["id"] for m in members or []):
+                call("POST", f"{r}/organizations/{match[0]['id']}/members", data=su["id"], token=tok)
+                changed.append(f"{client_id}: member of {org}")
+        # The secret goes to a file for the services that need it; it is never printed.
+        if a.secret_dir:
+            import os
+            os.makedirs(a.secret_dir, mode=0o750, exist_ok=True)
+            _, sec = call("GET", f"{r}/clients/{cid}/client-secret", token=tok)
+            path = os.path.join(a.secret_dir, f"{client_id}.secret")
+            value = (sec or {}).get("value", "")
+            if value and (not os.path.exists(path) or open(path).read().strip() != value):
+                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w") as f:
+                    f.write(value + "\n")
+                changed.append(f"{client_id}: secret written")
 
     print("changed: " + ("; ".join(changed) if changed else "nothing"))
     return 0

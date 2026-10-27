@@ -22,3 +22,8 @@ smtp_user: ""
 smtp_from: "no-reply@loamz.com"   # the address mail comes from (must be allowed by your email provider)
 # The most all encrypted files may take together, in MB. Keep it under the free storage allowance (8000 once files are on R2).
 blob_budget_mb: 20000
+
+# AI agents that may join chats. Each gets its own Keycloak client (a service account); people add it by its email address.
+# `org` is the organization (tenant) it serves; leave it empty for an agent that serves personal accounts.
+agents:
+  - { name: helper, email: "helper@agents.example.com", display: "Helper", org: "" }
