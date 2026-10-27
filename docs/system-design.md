@@ -75,3 +75,12 @@ Data moves down the tiers by age (Iceberg partitions by month; compaction job al
 3. Media to R2 with short-lived links for chat members only.
 4. Data platform on the VM against your real stock partitions; measure query times; tune partitioning (symbol group, month).
 5. Monitor disk, memory and request counts; alarm before any free limit is hit.
+
+
+## 8. Update 2026-10-27: raw data stays local, only gold and models go to the VM
+
+- Training data (raw and silver) lives on the owner's local server with an encrypted off-site backup (B2 or one InterServer slice, about $3/month). It is the master copy, so it must be backed up.
+- Models are trained and backtested locally and published as a **model package**: model file, feature code, and a spec (features, window length, run frequency, version, backtest metrics).
+- The VM runs: a model registry, a window fetcher (recent bars from a market-data source), a small CPU inference service, a predictions store, and agent tools (`get_model_spec`, `fetch_window`, `predict`) so agents decide when and how to call a model.
+- Anything that acts on money goes through the existing approval step. Every prediction records model version and the exact window used.
+- A spare VPS (for example InterServer 4 slices: 2 cores, 8 GB, 4 TB, $12/month) is the fallback for heavier inference or the data platform if the free 2-core VM is outgrown.
