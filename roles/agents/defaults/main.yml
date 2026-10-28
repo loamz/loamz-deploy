@@ -1,2 +1,6 @@
-# The model key comes from the environment of the computer running Ansible (OPENAI_API_KEY); group_vars/secrets.yml may override it.
+# Model keys come from the environment of the computer running Ansible; group_vars/secrets.yml may override them. Only the key of the
+# provider named in `agents_model` is needed (openai/..., groq/..., gemini/..., openrouter/...).
 openai_api_key: "{{ lookup('env', 'OPENAI_API_KEY') }}"
+groq_api_key: "{{ lookup('env', 'GROQ_API_KEY') }}"
+gemini_api_key: "{{ lookup('env', 'GEMINI_API_KEY') }}"
+openrouter_api_key: "{{ lookup('env', 'OPENROUTER_API_KEY') }}"

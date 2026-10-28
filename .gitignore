@@ -2,3 +2,4 @@ inventory.ini
 group_vars/
 artifacts/
 secrets-backup/
+model.env

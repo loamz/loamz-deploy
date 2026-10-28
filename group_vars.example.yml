@@ -27,6 +27,7 @@ blob_budget_mb: 20000
 # `org` is the organization (tenant) it serves; leave it empty for an agent that serves personal accounts.
 agents:
   - { name: helper, email: "helper@agents.example.com", display: "Helper", org: "" }
-# Loamz Agents on this machine (the agent server and the chat bridge). Needs openai_api_key in group_vars/secrets.yml.
+# Loamz Agents on this machine (the agent server and the chat bridge). Needs the key of agents_model's provider in group_vars/secrets.yml.
 agents_enabled: false
+# provider/model: openai/gpt-5.4-mini, groq/openai/gpt-oss-120b (free tier, no card), gemini/..., openrouter/...
 agents_model: "openai/gpt-5.4-mini"

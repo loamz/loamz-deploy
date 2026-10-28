@@ -1,9 +1,13 @@
 # Loamz Agents (the agent server) next to chat, on the same machine. It is installed from wheels built on the owner's computer
 # (build-agents.sh), into its own Python 3.14 environment. Skipped entirely unless `agents_enabled` is true and the secrets exist.
-- name: Agents are switched on
+- name: Agents are switched on, and the model has a key
+  vars:
+    model_provider: "{{ (agents_model | default('openai/gpt-5.4-mini')).split('/')[0] }}"
+    model_keys: { openai: "{{ openai_api_key }}", groq: "{{ groq_api_key }}", gemini: "{{ gemini_api_key }}", google: "{{ gemini_api_key }}", openrouter: "{{ openrouter_api_key }}" }
   ansible.builtin.assert:
-    that: [openai_api_key is defined, openai_api_key | length > 0]
-    fail_msg: "Set openai_api_key in group_vars/secrets.yml (never in git), or set agents_enabled: false."
+    that:
+      - (model_keys[model_provider] | default('')) | length > 0
+    fail_msg: "agents_model is {{ agents_model | default('openai/gpt-5.4-mini') }}: set the {{ model_provider }} key (openai_api_key, groq_api_key, gemini_api_key or openrouter_api_key) in group_vars/secrets.yml (never in git), or set agents_enabled: false."
   when: agents_enabled | default(false)
 
 - block:
