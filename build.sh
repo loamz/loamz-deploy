@@ -25,6 +25,9 @@ fi
 cd web
 pnpm install --frozen-lockfile
 pnpm wasm
-VITE_LEGAL="$legal" VITE_OIDC_AUTHORITY="${AUTH_URL:?set AUTH_URL to your sign-in address, like https://auth.example.com}/realms/loamz" pnpm build
+# The Google client that lets people keep backups in their own Drive. It is public (it identifies the app, and holds no secret): the app uses
+# the browser-only flow, which needs no client secret, so none is stored anywhere. Set GOOGLE_DRIVE_CLIENT_ID to use another, or empty to turn it off.
+drive="${GOOGLE_DRIVE_CLIENT_ID-53018822558-fsjrnun497g9eofguuok9ggi8toe47nb.apps.googleusercontent.com}"
+VITE_LEGAL="$legal" VITE_GOOGLE_DRIVE_CLIENT_ID="$drive" VITE_OIDC_AUTHORITY="${AUTH_URL:?set AUTH_URL to your sign-in address, like https://auth.example.com}/realms/loamz" pnpm build
 cp -r dist "$out/web"
 echo "built: $out"
