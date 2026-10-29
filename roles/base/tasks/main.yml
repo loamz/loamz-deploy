@@ -74,6 +74,12 @@
     mode: "0750"
 
 # What the server writes about connections (the web server's and every program's logs) is kept 30 days and then deleted: the privacy policy says so.
+- name: A place for journald settings
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+
 - name: Server logs are kept 30 days
   ansible.builtin.copy:
     dest: /etc/systemd/journald.conf.d/loamz-retention.conf
