@@ -13,6 +13,35 @@
     name: caddy
     state: present
 
+- name: Folders for the static sites
+  ansible.builtin.file:
+    path: "/opt/loamz-sites/{{ item.dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ static_sites | default([]) }}"
+
+- name: The static sites' own pages
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/sites/{{ item.dir }}/"
+    dest: "/opt/loamz-sites/{{ item.dir }}/"
+    owner: root
+    group: root
+    mode: "0644"
+    directory_mode: "0755"
+  loop: "{{ static_sites | default([]) }}"
+
+- name: What every static site shares (stylesheet, icon)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/sites/_shared/"
+    dest: "/opt/loamz-sites/{{ item.dir }}/"
+    owner: root
+    group: root
+    mode: "0644"
+    directory_mode: "0755"
+  loop: "{{ static_sites | default([]) }}"
+
 - name: The site
   ansible.builtin.template:
     src: Caddyfile.j2

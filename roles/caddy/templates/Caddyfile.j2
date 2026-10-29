@@ -70,3 +70,27 @@
 		Referrer-Policy no-referrer
 	}
 }
+
+{% for site in static_sites | default([]) %}
+# Static site: {{ site.domain }}. Plain files, no scripts, no backend.
+{{ site.domain }} {
+	encode zstd gzip
+	root * /opt/loamz-sites/{{ site.dir }}
+	file_server
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+	}
+	@page path / /index.html
+	header @page Cache-Control "no-cache"
+}
+{% for name in site.redirect | default([]) %}
+{{ name }} {
+	redir https://{{ site.domain }}{uri} permanent
+}
+{% endfor %}
+
+{% endfor %}

@@ -1,0 +1,5 @@
+# Static sites served by Caddy, one folder each under /opt/loamz-sites (sources in sites/). Point each name's DNS at this
+# machine first, or Caddy cannot get its certificate. `redirect` names go to the main name. Override in group_vars if needed.
+static_sites:
+  - { domain: loamz.com, dir: loamz, redirect: [www.loamz.com] }
+  - { domain: data.loamz.com, dir: data }

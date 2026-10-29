@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loamz Data: governed data for people and AI agents</title>
+<meta name="description" content="Loamz Data is a design for a governed data platform: tables, vectors, graphs and files in one place, with roles, audit, a real erase, and strict sandboxes for AI analysis.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171717" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="https://loamz.com"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="13" height="13" rx="2.5" fill="#7c3aed" transform="rotate(8 8 8)"/><rect x="9" y="9" width="13" height="13" rx="2.5" fill="#d44200" transform="rotate(8 15 15)"/></svg>Loamz Data</a>
+    <nav class="top" aria-label="Main"><a href="#what">What it does</a><a href="#design">The design</a><a href="#rules">Rules</a><a href="#status">Status</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <span class="chip warn">In design: nothing here is running yet</span>
+      <h1>Governed data for people and AI agents.</h1>
+      <p>One place for tables, vectors, graphs and files, with roles, an audit trail, a real erase, and strict sandboxes where AI can analyse data without being trusted with the keys. This page shows the design we are building toward.</p>
+    </section>
+
+    <section id="what" aria-labelledby="what-title">
+      <h2 id="what-title">What it will do</h2>
+      <div class="grid four">
+        <article class="card"><h3>Store every shape</h3><p>Tables, vectors, graphs and files (images, video, documents) through one interface. You choose where each dataset lives: a database for transactions, or files and object storage for scale.</p></article>
+        <article class="card"><h3>Govern it</h3><p>A catalog of what exists, roles (Owner, Contributor, Reader) and service accounts, quotas, an audit trail, retention, and an erase that can be proven.</p></article>
+        <article class="card"><h3>Compute safely</h3><p>SQL, jobs and pipelines, and isolated sandboxes where an AI agent can run code to make charts and derived datasets. The sandbox never holds a storage key.</p></article>
+        <article class="card"><h3>Run anywhere</h3><p>On a laptop with SQLite and local files, or on a server with Postgres and S3-compatible storage. The same interface either way.</p></article>
+      </div>
+    </section>
+
+    <section id="design" aria-labelledby="design-title">
+      <h2 id="design-title">The design, in three blocks</h2>
+      <div class="blocks">
+        <div class="band">
+          <div class="label">Governance: the only door</div>
+          <div class="pills"><span class="pill">API</span><span class="pill">Catalogs</span><span class="pill">IAM</span><span class="pill">Access policies</span><span class="pill">Quota</span><span class="pill">Lifecycle</span><span class="pill">Audit</span></div>
+        </div>
+        <div class="two">
+          <div class="band">
+            <div class="label">Compute</div>
+            <div class="pills"><span class="pill">Query engine</span><span class="pill">Jobs</span><span class="pill">Pipelines</span><span class="pill">Sandboxes</span></div>
+            <p class="note tight">Reaches storage only through a short-lived, limited handle that Governance creates.</p>
+          </div>
+          <div class="band">
+            <div class="label">Storage: one client, two families</div>
+            <div class="sub"><b>Database family</b>Postgres. Real transactions across tables, for people who need them.</div>
+            <div class="sub"><b>File and object family</b>S3-compatible object storage, and files on disk (including SQLite). Atomic commits per dataset, built for size and portability.</div>
+            <p class="note tight">Every backend offers the same four things: relations, vectors, graphs and blobs.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="rules" aria-labelledby="rules-title">
+      <h2 id="rules-title">Rules we are building around</h2>
+      <ul class="plain">
+        <li>Everything goes through Governance. Nothing reads storage on the side.</li>
+        <li>Code written by an AI runs in a sandbox with no network by default, strict time and memory limits, and no storage credentials. It reads and writes through checked, logged calls.</li>
+        <li>What a sandbox produces (a chart, a derived dataset) inherits the strictest classification of what it read, and its lineage is recorded.</li>
+        <li>Vector search obeys the same permissions as the data behind it, so an embedding never leaks a row you could not read.</li>
+        <li>Erase is a durable task that retries until it is finished and proves the data is gone. Audit keeps the proof, not the person's content.</li>
+        <li>Data never calls the products that use it. It announces changes, and others subscribe.</li>
+      </ul>
+    </section>
+
+    <section id="status" aria-labelledby="status-title">
+      <h2 id="status-title">Where we are</h2>
+      <div class="status">
+        <div><span class="chip ok">Exists in code</span><span>A storage engine library (Postgres and SQLite databases, a file store, vectors, memory, documents) and a first server, with tests. Neither is deployed.</span></div>
+        <div><span class="chip warn">Being decided</span><span>The storage contract, the file formats to support, and how closely to follow open catalog standards.</span></div>
+        <div><span class="chip">Next</span><span>Short experiments to prove the design (concurrent writers, a real erase, vector search on a small machine), then the first customer: Loamz Agents.</span></div>
+      </div>
+      <p class="note">Loamz Data is part of <a href="https://loamz.com">Loamz</a>, alongside <a href="https://chat.loamz.com">Loamz Chat</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div>Run by Ravikumar Chavva, Bengaluru, India.</div>
+    <div>Contact: <a href="mailto:support@loamz.com">support@loamz.com</a> · Privacy: <a href="mailto:privacy@loamz.com">privacy@loamz.com</a></div>
+  </footer>
+</div>
+</body>
+</html>
