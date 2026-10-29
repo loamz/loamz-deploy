@@ -72,3 +72,13 @@
     owner: root
     group: loamz-chat
     mode: "0750"
+
+# What the server writes about connections (the web server's and every program's logs) is kept 30 days and then deleted: the privacy policy says so.
+- name: Server logs are kept 30 days
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/loamz-retention.conf
+    content: |
+      [Journal]
+      MaxRetentionSec=30day
+    mode: "0644"
+  notify: Restart journald
