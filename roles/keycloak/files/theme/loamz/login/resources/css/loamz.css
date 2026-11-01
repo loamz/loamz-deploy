@@ -1,0 +1,206 @@
+/* The Loamz sign-in page: the same tokens as the apps (loamz-chat/web/src/design/tokens.css), light and dark following the system. */
+@font-face {
+  font-family: "Geist Variable";
+  src: url("../fonts/geist-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --lz-bg: #f4f5f8;
+  --lz-card: #ffffff;
+  --lz-fg: #090a0f;
+  --lz-muted: #5e6472;
+  --lz-border: #e2e4ea;
+  --lz-border-hover: #cbcfd9;
+  --lz-input: #ffffff;
+  --lz-accent: #7c3aed;
+  --lz-action: #d44200;
+  --lz-action-hover: #b93800;
+  --lz-action-fg: #ffffff;
+  --lz-danger: #b91c1c;
+  --lz-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lz-bg: #171717;
+    --lz-card: #1f1f1f;
+    --lz-fg: #f5f5f5;
+    --lz-muted: #9ca3af;
+    --lz-border: #2a2a2a;
+    --lz-border-hover: #3a3a3a;
+    --lz-input: #1f1f1f;
+    --lz-accent: #a177f5;
+    --lz-action: #ff8a47;
+    --lz-action-hover: #ff9d64;
+    --lz-action-fg: #171717;
+    --lz-danger: #f87171;
+    --lz-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+}
+
+html,
+body,
+body#keycloak-bg,
+.pf-v5-c-login {
+  background: var(--lz-bg) !important;
+  color: var(--lz-fg);
+  font-family: "Geist Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The brand: the Loamz mark and name where the realm's name was. */
+#kc-header-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 0 !important;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--lz-fg) !important;
+}
+#kc-header-wrapper::before {
+  content: "";
+  width: 40px;
+  height: 40px;
+  background: url("../img/mark.svg") no-repeat center / contain;
+}
+#kc-header-wrapper::after {
+  content: "Loamz";
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--lz-fg);
+}
+
+.pf-v5-c-login__container {
+  grid-template-columns: minmax(0, 26rem);
+  justify-content: center;
+}
+
+/* The card. */
+.pf-v5-c-login__main {
+  background: var(--lz-card);
+  border: 1px solid var(--lz-border);
+  border-radius: 16px;
+  box-shadow: var(--lz-shadow);
+  overflow: hidden;
+}
+.pf-v5-c-login__main-header {
+  border-top: 0 !important;
+}
+#kc-page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--lz-fg);
+}
+.pf-v5-c-login__main-footer-band,
+.pf-v5-c-login__main-footer {
+  color: var(--lz-muted);
+}
+
+/* Fields. */
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  color: var(--lz-fg);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--BackgroundColor: var(--lz-input);
+  --pf-v5-c-form-control--Color: var(--lz-fg);
+  --pf-v5-c-form-control--BorderRadius: 8px;
+  background: var(--lz-input);
+  border-radius: 8px;
+  border: 1px solid var(--lz-border);
+  box-shadow: none;
+}
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after {
+  display: none;
+}
+.pf-v5-c-form-control:hover {
+  border-color: var(--lz-border-hover);
+}
+.pf-v5-c-form-control:focus-within {
+  border-color: var(--lz-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lz-accent) 22%, transparent);
+}
+.pf-v5-c-form-control input {
+  color: var(--lz-fg);
+  background: transparent;
+  height: 2.5rem;
+  font-size: 0.9375rem;
+}
+.pf-m-error .pf-v5-c-form-control,
+.pf-v5-c-form-control[aria-invalid="true"] {
+  border-color: var(--lz-danger);
+}
+
+/* The one action on the page, in the action colour. */
+.pf-v5-c-button.pf-m-primary {
+  --pf-v5-c-button--m-primary--BackgroundColor: var(--lz-action);
+  --pf-v5-c-button--m-primary--Color: var(--lz-action-fg);
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: var(--lz-action-hover);
+  background: var(--lz-action);
+  color: var(--lz-action-fg);
+  border-radius: 8px;
+  font-weight: 600;
+  height: 2.5rem;
+}
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus {
+  background: var(--lz-action-hover);
+  color: var(--lz-action-fg);
+}
+.pf-v5-c-button.pf-m-primary::after {
+  display: none;
+}
+
+/* Everything else that is a link or a quiet button. */
+a,
+.pf-v5-c-button.pf-m-link,
+.pf-v5-c-button.pf-m-link:hover {
+  color: var(--lz-accent);
+}
+.pf-v5-c-button.pf-m-secondary,
+.pf-v5-c-button.pf-m-tertiary {
+  border-radius: 8px;
+  color: var(--lz-fg);
+  background: transparent;
+  border-color: var(--lz-border);
+}
+.pf-v5-c-alert {
+  border-radius: 8px;
+}
+
+/* The field already shows focus on its own border: no second, black outline inside it. */
+.pf-v5-c-form-control input:focus,
+.pf-v5-c-form-control input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* The small buttons beside a field (show password, change user) match the field. */
+.pf-v5-c-input-group__item .pf-v5-c-button.pf-m-control,
+.pf-v5-c-button.pf-m-control {
+  background: var(--lz-input);
+  color: var(--lz-muted);
+  border: 1px solid var(--lz-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.pf-v5-c-button.pf-m-control::before,
+.pf-v5-c-button.pf-m-control::after {
+  display: none;
+}
+.pf-v5-c-button.pf-m-control:hover {
+  color: var(--lz-fg);
+  border-color: var(--lz-border-hover);
+}
+.pf-v5-c-input-group {
+  gap: 0.5rem;
+}

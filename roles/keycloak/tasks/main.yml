@@ -51,6 +51,15 @@
     name: keycloak
     owner: keycloak
 
+# The Loamz sign-in page (colours, mark, font) for every app that signs in here. Keycloak reads it from its themes folder.
+- name: The Loamz sign-in theme
+  ansible.builtin.copy:
+    src: theme/loamz/
+    dest: /etc/keycloak/themes/loamz/
+    mode: preserve
+    directory_mode: "0755"
+  notify: Restart keycloak
+
 - name: The realm (people, the chat app, Google sign-in), imported the first time Keycloak starts
   ansible.builtin.template:
     src: realm-loamz.json.j2

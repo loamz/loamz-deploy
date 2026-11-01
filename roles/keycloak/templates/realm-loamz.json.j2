@@ -1,6 +1,7 @@
 {
   "realm": "loamz",
   "displayName": "Loamz",
+  "loginTheme": "loamz",
   "enabled": true,
   "sslRequired": "{{ 'none' if dev | default(false) else 'external' }}",
   "organizationsEnabled": true,
@@ -89,6 +90,114 @@
       ],
       "defaultClientScopes": ["basic", "web-origins", "acr", "profile", "roles", "email", "organization"],
       "optionalClientScopes": []
+    },
+    {
+      "clientId": "loamz-data",
+      "name": "Loamz Data",
+      "description": "The Data web app and API: public client, authorization code + PKCE (S256). Tokens carry the organization (its alias, which Keycloak never lets anyone change), the person's groups, and the client role account-admin.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "rootUrl": "{{ scheme | default('https') }}://{{ data_domain | default('data.loamz.com') }}",
+      "redirectUris": ["{{ scheme | default('https') }}://{{ data_domain | default('data.loamz.com') }}/*"],
+      "webOrigins": ["{{ scheme | default('https') }}://{{ data_domain | default('data.loamz.com') }}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "{{ scheme | default('https') }}://{{ data_domain | default('data.loamz.com') }}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "loamz-data audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": { "included.client.audience": "loamz-data", "id.token.claim": "false", "access.token.claim": "true", "introspection.token.claim": "true" }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": { "claim.name": "groups", "full.path": "true", "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true" }
+        }
+      ],
+      "defaultClientScopes": ["basic", "web-origins", "acr", "profile", "roles", "email", "organization"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "loamz-data-directory",
+      "name": "Loamz Data directory",
+      "description": "Lets Data list people and groups for its admin pages. A service account that can only read users and groups.",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${LOAMZ_DATA_DIRECTORY_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["basic"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "loamz-agents",
+      "name": "Loamz Agents",
+      "description": "The agents server acting for a person: it exchanges the person's token (RFC 8693, standard token exchange) for one for loamz-data, and keeps its own service account for data no single person owns. A person's token must name this client in its audience to be exchanged.",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${LOAMZ_AGENTS_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": { "standard.token.exchange.enabled": "true" },
+      "protocolMappers": [
+        {
+          "name": "loamz-data audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": { "included.client.audience": "loamz-data", "id.token.claim": "false", "access.token.claim": "true", "introspection.token.claim": "true" }
+        }
+      ],
+      "defaultClientScopes": ["basic", "roles", "organization"],
+      "optionalClientScopes": []
+    }{% if dev | default(false) %},
+    {
+      "clientId": "loamz-data-test",
+      "name": "Loamz Data test (development only)",
+      "description": "Lets test scripts get real tokens for test users with a password. Exists only in the throwaway development realm.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        { "name": "loamz-data audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "consentRequired": false,
+          "config": { "included.client.audience": "loamz-data", "id.token.claim": "false", "access.token.claim": "true", "introspection.token.claim": "true" } },
+        { "name": "loamz-agents audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "consentRequired": false,
+          "config": { "included.client.audience": "loamz-agents", "id.token.claim": "false", "access.token.claim": "true", "introspection.token.claim": "true" } },
+        { "name": "groups", "protocol": "openid-connect", "protocolMapper": "oidc-group-membership-mapper", "consentRequired": false,
+          "config": { "claim.name": "groups", "full.path": "true", "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true" } }
+      ],
+      "defaultClientScopes": ["basic", "profile", "roles", "email", "organization"],
+      "optionalClientScopes": []
+    }{% endif %}
+  ],
+  "roles": {
+    "client": {
+      "loamz-data": [
+        { "name": "account-admin", "description": "May manage this account in Loamz Data: workspaces, identities, catalogs, compute, usage." }
+      ]
+    }
+  },
+  "users": [
+    {
+      "username": "service-account-loamz-data-directory",
+      "enabled": true,
+      "serviceAccountClientId": "loamz-data-directory",
+      "clientRoles": { "realm-management": ["view-users", "query-users", "query-groups", "view-realm"] }
     }
   ],
 {% if dev | default(false) %}

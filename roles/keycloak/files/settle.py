@@ -108,6 +108,13 @@ def main() -> int:
                 call("POST", f"{r}/roles-by-id/{default_id}/composites", data=[role], token=tok)
                 changed.append("everyone may delete their own account")
 
+    # 4b. The realm signs people in with the Loamz theme (colours, mark, font), the same for every app.
+    _, realm_now = call("GET", r, token=tok)
+    if realm_now and realm_now.get("loginTheme") != "loamz":
+        realm_now["loginTheme"] = "loamz"
+        call("PUT", r, data=realm_now, token=tok)
+        changed.append("Loamz sign-in theme")
+
     # 5. The chat app's token also carries the agents API audience, so people can call the agents server with it.
     if clients:
         c = clients[0]
