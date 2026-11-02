@@ -4,3 +4,4 @@ artifacts/
 secrets-backup/
 model.env
 releases/
+__pycache__/

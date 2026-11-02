@@ -1,0 +1,52 @@
+name: Deploy CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - run: pip install pyyaml==6.0.3 jsonschema==4.26.0 pytest==9.1.1
+      - name: The product registry is sound
+        run: python3 products/validate.py
+      - name: Each rule of the registry fires
+        run: python3 -m pytest products/test_validate.py -q
+
+  playbooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - run: pip install ansible-core==2.21.5 jinja2
+      - run: ansible-galaxy collection install -r requirements.yml
+      - name: The playbooks parse
+        run: |
+          ansible-playbook --syntax-check -i inventory.example.ini site.yml
+          ansible-playbook --syntax-check -i inventory.example.ini backup-secrets.yml
+      - name: The scripts, and the backup and restore scripts as they render, are valid shell
+        run: |
+          bash -n build.sh build-agents.sh release.sh
+          python3 - <<'PY'
+          import jinja2
+          for name, args in [("backup", dict(backup_remote="b2:bucket", b2_key="k", b2_bucket="b", oci_namespace="ns", oci_archive_bucket="a")), ("restore", {})]:
+              open(f"/tmp/{name}.sh", "w").write(jinja2.Template(open(f"roles/backup/templates/{name}.sh.j2").read()).render(**args))
+          PY
+          sh -n /tmp/backup.sh && sh -n /tmp/restore.sh
+      - name: release.sh keeps, lists and rolls back builds
+        run: bash tests/release-test.sh

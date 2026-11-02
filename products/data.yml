@@ -1,0 +1,43 @@
+# Loamz Data: the governed data platform (Rust server, React workbench). Not deployed yet: state is planned until the first deploy.
+schema: 1
+id: data
+name: Loamz Data
+kind: engine
+state: planned
+repo: loamz-data
+urls:
+  app: https://data.loamz.com
+  api: https://data.loamz.com/api
+  internal: http://127.0.0.1:8020
+identity:
+  audience: loamz-data
+  clients:
+    - id: loamz-data
+      type: public
+      purpose: The Data web app, the account site and each workspace site (authorization code with PKCE).
+      redirects: [https://data.loamz.com/*]
+      origins: [https://data.loamz.com]
+    - id: loamz-data-directory
+      type: confidential
+      purpose: Lets the Data server look up people and groups in Keycloak for its member pickers.
+      service_account: true
+  # An agent acting for a person: the pair gets what both may do (LOAMZ_DATA_AGENT_CLIENTS).
+  accepts_exchange_from: [loamz-agents]
+  # Data works without Agents and calls no other product.
+  calls: []
+  web_extra_audiences: []
+tenant:
+  key: keycloak_org_alias
+  lifecycle: custom
+agents:
+  mode: builtin
+  key: loamz-data
+deploy:
+  kind: binary
+  unit: loamz-data
+  port: 8020
+  health: /readyz
+  memory_mb: 4608
+shell:
+  icon: Database
+  order: 30

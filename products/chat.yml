@@ -1,0 +1,38 @@
+# Loamz Chat: the E2EE messenger (Rust server, React web app). Live. Written to describe what runs; it changes nothing by itself.
+schema: 1
+id: chat
+name: Loamz Chat
+kind: engine
+state: live
+repo: loamz-chat
+urls:
+  app: https://chat.loamz.com
+  api: https://chat.loamz.com/api
+  internal: http://127.0.0.1:8090
+identity:
+  audience: loamz-chat
+  clients:
+    - id: loamz-chat
+      type: public
+      purpose: The chat web app (authorization code with PKCE).
+      redirects: [https://chat.loamz.com/auth/callback]
+      origins: [https://chat.loamz.com]
+  accepts_exchange_from: []
+  # The web app and the chat bridges call the Agents API.
+  calls: [loamz-agents]
+  # settle.py step 5: the chat web token also carries the agents audience, so the browser can call the agents server with it.
+  web_extra_audiences: [loamz-agents]
+tenant:
+  key: keycloak_org_alias
+  lifecycle: none
+agents:
+  mode: none
+deploy:
+  kind: binary
+  unit: chat-server
+  port: 8090
+  health: /healthz
+  memory_mb: 512
+shell:
+  icon: MessageCircle
+  order: 10

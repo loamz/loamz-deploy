@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "A Loamz product",
+  "description": "One file per product in loamz-deploy/products. Security-sensitive grants (identity, audiences, who may exchange tokens, hosts, ports) live here; descriptive content stays in the product.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "name", "kind", "state", "repo", "urls", "identity", "tenant", "agents", "deploy", "shell"],
+  "properties": {
+    "schema": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,30}$" },
+    "name": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["engine", "solution"], "description": "An engine is a server with its own API; a solution is built on the engines through the SDKs." },
+    "state": { "enum": ["planned", "beta", "live"] },
+    "repo": { "type": "string", "pattern": "^loamz-[a-z0-9-]+$" },
+    "urls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api", "internal"],
+      "properties": {
+        "app": { "type": "string", "pattern": "^https://[a-z0-9.-]+(/.*)?$" },
+        "api": { "type": "string", "pattern": "^https://[a-z0-9.-]+(/.*)?$" },
+        "internal": { "type": "string", "pattern": "^http://127\\.0\\.0\\.1:[0-9]{2,5}$" }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audience", "clients", "accepts_exchange_from", "calls", "web_extra_audiences"],
+      "properties": {
+        "audience": { "type": "string", "pattern": "^loamz-[a-z0-9-]+$" },
+        "clients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "type", "purpose"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^loamz-[a-z0-9-]+$" },
+              "type": { "enum": ["public", "confidential"] },
+              "purpose": { "type": "string", "minLength": 8 },
+              "service_account": { "type": "boolean" },
+              "exchange": { "type": "boolean", "description": "Standard token exchange (RFC 8693) is enabled for this client." },
+              "redirects": { "type": "array", "items": { "type": "string", "pattern": "^https://" } },
+              "origins": { "type": "array", "items": { "type": "string", "pattern": "^https://[a-z0-9.-]+$" } }
+            }
+          }
+        },
+        "accepts_exchange_from": { "type": "array", "items": { "type": "string" }, "description": "Client ids whose exchanged tokens this product accepts as an agent acting for a person." },
+        "calls": { "type": "array", "items": { "type": "string" }, "description": "Audiences this product's own clients call; each must be an allowed edge in edges.yml." },
+        "web_extra_audiences": { "type": "array", "items": { "type": "string" }, "description": "Audiences the product's web app token also carries, so the browser can call that product." }
+      }
+    },
+    "tenant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "lifecycle"],
+      "properties": {
+        "key": { "const": "keycloak_org_alias" },
+        "lifecycle": { "enum": ["none", "standard", "custom"], "description": "Idempotent provision, entitlements, usage and erase: the standard contract, a product-specific adapter, or none yet." }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["none", "builtin", "mcp"] },
+        "key": { "type": "string" },
+        "mcp_path": { "type": "string", "pattern": "^/" },
+        "tools_manifest": { "type": "string", "pattern": "^/" }
+      },
+      "allOf": [
+        { "if": { "properties": { "mode": { "const": "builtin" } } }, "then": { "required": ["key"] } },
+        { "if": { "properties": { "mode": { "const": "mcp" } } }, "then": { "required": ["mcp_path", "tools_manifest"] } }
+      ]
+    },
+    "deploy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["binary", "python", "static", "none"] },
+        "unit": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+        "health": { "type": "string", "pattern": "^/" },
+        "memory_mb": { "type": "integer", "minimum": 16, "maximum": 12288 }
+      }
+    },
+    "shell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["icon", "order"],
+      "properties": { "icon": { "type": "string" }, "order": { "type": "integer", "minimum": 0 } }
+    }
+  }
+}

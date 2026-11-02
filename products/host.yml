@@ -1,0 +1,8 @@
+# The one machine everything runs on today (an Oracle Always Free Ampere A1). The sum of the products' deploy.memory_mb plus what the
+# infrastructure holds must leave at least min_headroom_mb free (docs/system-design.md: Postgres 2 GB, Keycloak 1.5 GB, Caddy 0.1 GB).
+memory_mb: 12288
+min_headroom_mb: 1792
+reserved_mb:
+  postgres: 2048
+  keycloak: 1536
+  caddy: 128

@@ -1,0 +1,35 @@
+# Loamz Agents: conversations, the model and the tool loop (Python server). Live. It has no web app of its own: its console runs inside Chat.
+schema: 1
+id: agents
+name: Loamz Agents
+kind: engine
+state: live
+repo: loamz-agents
+urls:
+  api: https://chat.loamz.com/agents-api
+  internal: http://127.0.0.1:8000
+identity:
+  audience: loamz-agents
+  clients:
+    - id: loamz-agents
+      type: confidential
+      purpose: The agents server acting for a person; it exchanges their token (RFC 8693) for one for the product it calls.
+      service_account: true
+      exchange: true
+  accepts_exchange_from: []
+  calls: [loamz-data]
+  web_extra_audiences: []
+tenant:
+  key: keycloak_org_alias
+  lifecycle: custom
+agents:
+  mode: none
+deploy:
+  kind: python
+  unit: loamz-agents
+  port: 8000
+  health: /health/ready
+  memory_mb: 1536
+shell:
+  icon: Bot
+  order: 20

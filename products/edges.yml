@@ -1,0 +1,6 @@
+# Who may call whom, by product id. The one reviewable place for rule R2 of docs/ARCHITECTURE.md: a product's identity.calls must name
+# only audiences of products listed here. Data calls nothing: it works without Agents and never depends on it. Nothing may call
+# the control plane or a solution, so they never appear on the right.
+chat: [agents]
+agents: [data]
+data: []
