@@ -22,7 +22,7 @@ One machine runs everything (an Oracle Always Free Ampere A1: 2 cores, 12 GB): P
    `keycloak-*.dump.enc`, `loamz_agents-*.dump.enc` and `agents-bridge-*.tar.enc`; `blobs/` holds files under 10 MB. A copy of
    `group_vars/` and `inventory.ini` (both git-ignored).
 4. On your computer: `ansible-playbook`, `cargo-zigbuild` and `zig`, `wasm-pack`, `pnpm`, `uv`, and the sibling checkouts
-   `loamz-chat`, `loamz-agents`, `loamz-data`, `loamz-python` (the builds read them).
+   `loamz-chat`, `loamz-agents`, ``loamz-python` (the builds read them).
 
 ## 1. A new machine and DNS [owner only]
 
