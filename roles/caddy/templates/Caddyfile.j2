@@ -71,6 +71,27 @@
 	}
 }
 
+{% for id in deployed_products | default([]) %}
+{% set prod = lookup('ansible.builtin.file', products_dir ~ '/' ~ id ~ '.yml') | from_yaml %}
+# {{ prod.name }}, from products/{{ id }}.yml. Its workspace sites (one host each) need a wildcard certificate: see docs/ARCHITECTURE.md.
+{{ prod.urls.app | regex_replace('^https://([^/]+).*$', '\\1') }} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:{{ prod.deploy.port }} {
+		# A long query or a live stream must not be buffered or cut short.
+		flush_interval -1
+		transport http {
+			response_header_timeout 0
+		}
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+	}
+}
+
+{% endfor %}
 {% for site in static_sites | default([]) %}
 # Static site: {{ site.domain }}. Plain files, no scripts, no backend.
 {{ site.domain }} {

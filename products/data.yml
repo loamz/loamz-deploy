@@ -38,6 +38,9 @@ deploy:
   port: 8020
   health: /readyz
   memory_mb: 4608
+  database: true
+  database_env: LOAMZ_DATA_DATABASE_URL
+  web: true
 shell:
   icon: Database
   order: 30

@@ -50,5 +50,7 @@ jobs:
               open(f"/tmp/{name}.sh", "w").write(jinja2.Template(open(f"roles/backup/templates/{name}.sh.j2").read()).render(**args))
           PY
           sh -n /tmp/backup.sh && sh -n /tmp/restore.sh
+      - name: A deployed product renders its settings, unit and web address from its registry file
+        run: ansible-playbook -i localhost, -c local -e products_dir=$PWD/products tests/product-render-test.yml
       - name: release.sh keeps, lists and rolls back builds
         run: bash tests/release-test.sh

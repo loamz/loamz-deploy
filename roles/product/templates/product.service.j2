@@ -1,0 +1,24 @@
+[Unit]
+Description=Loamz {{ product.name }}
+After=network-online.target postgresql.service keycloak.service
+Wants=network-online.target
+
+[Service]
+User={{ product_user }}
+Group={{ product_user }}
+WorkingDirectory={{ product_state }}
+EnvironmentFile={{ product_etc }}/settings.env
+ExecStart={{ product_dir }}/{{ product.deploy.unit }}
+Restart=on-failure
+RestartSec=5
+# The machine is shared: a product may never use more than the memory the registry gave it.
+MemoryHigh={{ (product.deploy.memory_mb * 0.9) | int }}M
+MemoryMax={{ product.deploy.memory_mb }}M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ product_state }}
+
+[Install]
+WantedBy=multi-user.target

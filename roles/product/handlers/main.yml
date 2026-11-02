@@ -1,0 +1,5 @@
+- name: Restart products
+  ansible.builtin.systemd:
+    name: "{{ (lookup('ansible.builtin.file', products_dir ~ '/' ~ item ~ '.yml') | from_yaml).deploy.unit }}"
+    state: restarted
+  loop: "{{ deployed_products | default([]) }}"

@@ -1,0 +1,116 @@
+- name: "{{ product_id }}: read its registry file"
+  ansible.builtin.set_fact:
+    product: "{{ lookup('ansible.builtin.file', products_dir ~ '/' ~ product_id ~ '.yml') | from_yaml }}"
+    product_dir: "/opt/loamz-{{ product_id }}"
+    product_etc: "/etc/loamz-{{ product_id }}"
+    product_state: "/var/lib/loamz-{{ product_id }}"
+    product_user: "loamz-{{ product_id }}"
+
+- name: "{{ product_id }}: it is something this role can install"
+  ansible.builtin.assert:
+    that:
+      - product.id == product_id
+      - product.deploy.kind == 'binary'
+      - product.deploy.unit is defined and product.deploy.port is defined and product.deploy.memory_mb is defined
+      - product.state != 'planned'
+    fail_msg: "{{ product_id }} must be a binary product with a unit, port and memory_mb, and its state must not be planned."
+
+- name: "{{ product_id }}: program user"
+  ansible.builtin.user:
+    name: "{{ product_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ product_state }}"
+    create_home: false
+
+- name: "{{ product_id }}: directories"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ product_user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ product_dir }}", owner: root, mode: "0755" }
+    - { path: "{{ product_etc }}", owner: root, mode: "0750" }
+    - { path: "{{ product_state }}", owner: "{{ product_user }}", mode: "0750" }
+
+- name: "{{ product_id }}: program"
+  ansible.builtin.copy:
+    src: "artifacts/{{ product_id }}/{{ product.deploy.unit }}"
+    dest: "{{ product_dir }}/{{ product.deploy.unit }}"
+    mode: "0755"
+  notify: Restart products
+
+- name: "{{ product_id }}: web app"
+  ansible.posix.synchronize:
+    src: "artifacts/{{ product_id }}-web/"
+    dest: "{{ product_dir }}/web/"
+    delete: true
+    rsync_opts: ["--chmod=D755,F644"]
+  when: product.deploy.web | default(false)
+
+- name: "{{ product_id }}: key and secret files"
+  ansible.builtin.copy:
+    content: "{{ item.value }}"
+    dest: "{{ product_etc }}/{{ item.key }}"
+    owner: root
+    group: "{{ product_user }}"
+    mode: "0640"
+  loop: "{{ (product_files | default({})).get(product_id, {}) | dict2items }}"
+  loop_control: { label: "{{ item.key }}" }
+  no_log: true
+  notify: Restart products
+
+- name: "{{ product_id }}: database"
+  when: product.deploy.database | default(false)
+  block:
+    - name: Database password, made once
+      ansible.builtin.shell: |
+        umask 037
+        openssl rand -hex 24 > {{ product_etc }}/db-password
+        chgrp {{ product_user }} {{ product_etc }}/db-password
+      args:
+        creates: "{{ product_etc }}/db-password"
+
+    - name: Read it
+      ansible.builtin.slurp: { src: "{{ product_etc }}/db-password" }
+      register: product_db_password
+      no_log: true
+
+    - name: Database user
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: "loamz_{{ product_id }}"
+        password: "{{ product_db_password.content | b64decode | trim }}"
+      no_log: true
+
+    - name: Database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "loamz_{{ product_id }}"
+        owner: "loamz_{{ product_id }}"
+
+- name: "{{ product_id }}: settings"
+  ansible.builtin.template:
+    src: settings.env.j2
+    dest: "{{ product_etc }}/settings.env"
+    owner: root
+    group: "{{ product_user }}"
+    mode: "0640"
+  no_log: true
+  notify: Restart products
+
+- name: "{{ product_id }}: service definition"
+  ansible.builtin.template:
+    src: product.service.j2
+    dest: "/etc/systemd/system/{{ product.deploy.unit }}.service"
+    mode: "0644"
+  notify: Restart products
+
+- name: "{{ product_id }}: running, and on at every boot"
+  ansible.builtin.systemd:
+    name: "{{ product.deploy.unit }}"
+    state: started
+    enabled: true
+    daemon_reload: true

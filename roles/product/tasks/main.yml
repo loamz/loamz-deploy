@@ -1,0 +1,7 @@
+# Installs every product listed in `deployed_products` (ids from products/), from its registry file. A binary product needs its
+# program at artifacts/<id>/<unit>, and its settings in group_vars: product_env.<id> (name: value) and, for secrets and key files,
+# product_files.<id> (file name: content), written under /etc/loamz-<id>/ and never shown. Nothing here names a product.
+- name: Each deployed product
+  ansible.builtin.include_tasks: one.yml
+  loop: "{{ deployed_products | default([]) }}"
+  loop_control: { loop_var: product_id }

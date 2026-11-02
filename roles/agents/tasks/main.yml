@@ -72,7 +72,7 @@
         /opt/uv/bin/uv pip install --python /opt/loamz-agents/venv/bin/python
         --find-links /opt/loamz-agents/wheels
         {% if wheels.changed %}--reinstall-package loamz-agents-server --reinstall-package loamz-runtime --reinstall-package loamz-engine --reinstall-package loamz-identity --reinstall-package loamz-core --reinstall-package loamz-data{% endif %}
-        loamz-agents-server "loamz-runtime[openai,anthropic,gemini,redis,mcp,tools,data,code,postgres,logging]" "loamz-identity[server]" loamz-data
+        loamz-agents-server "loamz-runtime[openai,anthropic,gemini,redis,mcp,tools,data,code,postgres,logging]" loamz-identity loamz-data
       environment:
         UV_PYTHON_INSTALL_DIR: /opt/uv-python
       register: installed

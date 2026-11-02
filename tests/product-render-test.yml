@@ -1,0 +1,30 @@
+# Renders what roles/product and the Caddyfile make for each deployed product, with stand-in values, and checks it.
+# Run (from the repository root): ansible-playbook -i localhost, -c local -e products_dir=$PWD/products tests/product-render-test.yml
+- hosts: localhost
+  gather_facts: false
+  vars:
+    deployed_products: [data]
+    product_id: data
+    product: "{{ lookup('ansible.builtin.file', products_dir ~ '/data.yml') | from_yaml }}"
+    product_dir: /opt/loamz-data
+    product_etc: /etc/loamz-data
+    product_state: /var/lib/loamz-data
+    product_user: loamz-data
+    product_db_password: { content: "c2VjcmV0" }
+    product_env: { data: { LOAMZ_DATA_OIDC_ISSUER: "https://auth.loamz.com/realms/loamz" } }
+    domain: chat.loamz.com
+    auth_domain: auth.loamz.com
+    acme_email: ""
+  tasks:
+    - ansible.builtin.template: { src: ../roles/product/templates/settings.env.j2, dest: /tmp/product-render/settings.env }
+      delegate_to: localhost
+    - ansible.builtin.template: { src: ../roles/product/templates/product.service.j2, dest: /tmp/product-render/unit.service }
+    - ansible.builtin.template: { src: ../roles/caddy/templates/Caddyfile.j2, dest: /tmp/product-render/Caddyfile }
+    - ansible.builtin.assert:
+        that:
+          - "'LOAMZ_DATA_DATABASE_URL=postgres://loamz_data:secret@127.0.0.1/loamz_data' in lookup('file', '/tmp/product-render/settings.env')"
+          - "'LOAMZ_DATA_WEB_DIR=/opt/loamz-data/web' in lookup('file', '/tmp/product-render/settings.env')"
+          - "'LOAMZ_DATA_OIDC_ISSUER=https://auth.loamz.com/realms/loamz' in lookup('file', '/tmp/product-render/settings.env')"
+          - "'MemoryMax=4608M' in lookup('file', '/tmp/product-render/unit.service')"
+          - "'\ndata.loamz.com {' in lookup('file', '/tmp/product-render/Caddyfile')"
+          - "'reverse_proxy 127.0.0.1:8020' in lookup('file', '/tmp/product-render/Caddyfile')"
