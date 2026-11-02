@@ -1,0 +1,88 @@
+{
+  "about": "The event stream Agents sends and every reader must understand: `raw` is the bytes; `events` the fields that must be present (a ping is dropped, [DONE] ends it); `turn` the state a reader reaches. See spec/conventions.md.",
+  "cases": [
+    {
+      "name": "a turn that calls a tool and answers",
+      "raw": "data: {\"type\": \"ping\"}\n\nevent: tool.call\ndata: {\"type\":\"tool.call\",\"call_id\":\"c1\",\"tool_name\":\"data_sql\",\"agent\":\"main\",\"depth\":0,\"risk\":null}\n\nevent: tool.result\ndata: {\"type\":\"tool.result\",\"call_id\":\"c1\",\"tool_name\":\"data_sql\",\"ok\":true,\"output\":\"n\\n934685\",\"error\":null,\"agent\":\"main\",\"depth\":0}\n\nevent: text.delta\ndata: {\"type\":\"text.delta\",\"text\":\"There were \"}\n\nevent: text.delta\ndata: {\"type\":\"text.delta\",\"text\":\"934,685 trips.\"}\n\ndata: {\"type\": \"run.completed\"}\n\ndata: [DONE]\n\n",
+      "events": [
+        {
+          "type": "tool.call",
+          "call_id": "c1",
+          "tool_name": "data_sql"
+        },
+        {
+          "type": "tool.result",
+          "call_id": "c1",
+          "ok": true
+        },
+        {
+          "type": "text.delta",
+          "text": "There were "
+        },
+        {
+          "type": "text.delta",
+          "text": "934,685 trips."
+        },
+        {
+          "type": "run.completed"
+        }
+      ],
+      "turn": {
+        "text": "There were 934,685 trips.",
+        "status": "done",
+        "tools": [
+          {
+            "id": "c1",
+            "name": "data_sql",
+            "state": "done"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a run that fails",
+      "raw": "data: {\"type\": \"run.failed\", \"error\": \"model down\"}\n\ndata: [DONE]\n\n",
+      "events": [
+        {
+          "type": "run.failed",
+          "error": "model down"
+        }
+      ],
+      "turn": {
+        "text": "",
+        "status": "failed",
+        "error": "model down",
+        "tools": []
+      }
+    },
+    {
+      "name": "a run that is cancelled",
+      "raw": "data: {\"type\": \"run.cancelled\"}\n\ndata: [DONE]\n\n",
+      "events": [
+        {
+          "type": "run.cancelled"
+        }
+      ],
+      "turn": {
+        "text": "",
+        "status": "cancelled",
+        "tools": []
+      }
+    },
+    {
+      "name": "a connection that ends before the run does is a failure, not a success",
+      "raw": "event: text.delta\ndata: {\"type\":\"text.delta\",\"text\":\"par\"}\n\n",
+      "events": [
+        {
+          "type": "text.delta",
+          "text": "par"
+        }
+      ],
+      "turn": {
+        "text": "par",
+        "status": "failed",
+        "tools": []
+      }
+    }
+  ]
+}

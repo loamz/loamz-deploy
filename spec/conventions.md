@@ -17,6 +17,14 @@ and copy the vector file into each engine's tests (`python3 spec/generate_vector
   actor is `act.sub`. A product may also name clients whose person tokens count as an agent acting (Data: `LOAMZ_DATA_AGENT_CLIENTS`).
 - `vectors/token/<audience>.json` holds a key set, signed tokens and the outcome each must give. Times are 2001 and 2100, so no clock is needed.
 
+## The event stream (Agents to its readers)
+
+`POST /api/v1/chat` answers `text/event-stream`: events separated by a blank line, each `event: <type>` (optional) and `data: <json>` whose
+`type` is one of `text.delta`, `reasoning.delta`, `tool.call`, `tool.result`, `approval.requested`, `turn.completed`, `run.completed`, `run.failed`,
+`run.cancelled`, `ping`. A `ping` carries nothing and is dropped; `data: [DONE]` ends the stream. A stream that ends without a `run.*` event is a
+cut connection and a reader reports it as a failure. `vectors/sse/turn.json` holds streams and what a reader must make of them; the reader in
+loamz-ui (`@loamz/conversation`) runs them. Agents' emitter is **not** yet tested against them.
+
 ## The tenant lifecycle (standard)
 
 A tenant is a Keycloak organization alias. The control plane (Platform) calls a product with its own client's token for the product's audience.
@@ -37,5 +45,5 @@ Today only the contract and Platform's side exist (`loamz-platform/src/control/`
 
 ## Still to write (each needs vectors before it is a rule)
 
-Problem documents (RFC 9457, and Data's "404, never 403"), the event-stream frames Agents sends and Chat reads, pagination and
+Problem documents (RFC 9457, and Data's "404, never 403"), pagination and
 idempotency, vectors for the tenant lifecycle calls, and the webhook signature.
