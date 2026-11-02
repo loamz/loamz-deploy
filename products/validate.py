@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks the product registry: every products/<id>.yml against schema.json, and the rules between products (docs/ARCHITECTURE.md).
 
-    python3 products/validate.py [--export-agents FILE]   (the export is what the Agents server reads to offer products' tools)
+    python3 products/validate.py [--export-agents FILE] [--export-registry FILE]   (the export is what the Agents server reads to offer products' tools)
     exit 0 and one line when it is sound; every problem listed, exit 1, when it is not
 
 Needs PyYAML and jsonschema. The rules that need more than one file live here: who may call whom (edges.yml), that both ends of a
@@ -57,6 +57,15 @@ def export_for_agents(products: list[Product]) -> list[dict[str, Any]]:
         }
         for p in products
         if p["agents"]["mode"] == "mcp" and p["state"] != "planned"
+    ]
+
+
+def export_for_platform(products: list[Product]) -> list[dict[str, Any]]:
+    """What the control plane needs: every product, its audience, where to call it and which tenant lifecycle it speaks."""
+    return [
+        {"id": p["id"], "name": p["name"], "state": p["state"], "audience": p["identity"]["audience"],
+         "internal": p["urls"]["internal"], "lifecycle": p["tenant"]["lifecycle"]}
+        for p in products
     ]
 
 
@@ -150,6 +159,11 @@ def check(products: list[Product], edges: dict[str, list[str]], host: dict[str, 
 
 
 def main(argv: list[str]) -> int:
+    platform = None
+    if "--export-registry" in argv:
+        at = argv.index("--export-registry")
+        platform = Path(argv[at + 1])
+        argv = argv[:at] + argv[at + 2:]
     export = None
     if "--export-agents" in argv:
         at = argv.index("--export-agents")
@@ -162,6 +176,8 @@ def main(argv: list[str]) -> int:
         print("\n".join(f"  {p}" for p in problems), file=sys.stderr)
         print(f"registry: {len(problems)} problem(s)", file=sys.stderr)
         return 1
+    if platform:
+        platform.write_text(json.dumps(export_for_platform(products), indent=2) + "\n")
     if export:
         export.write_text(json.dumps(export_for_agents(products), indent=2) + "\n")
     used = sum(p["deploy"].get("memory_mb", 0) for p in products)

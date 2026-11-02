@@ -17,7 +17,25 @@ and copy the vector file into each engine's tests (`python3 spec/generate_vector
   actor is `act.sub`. A product may also name clients whose person tokens count as an agent acting (Data: `LOAMZ_DATA_AGENT_CLIENTS`).
 - `vectors/token/<audience>.json` holds a key set, signed tokens and the outcome each must give. Times are 2001 and 2100, so no clock is needed.
 
+## The tenant lifecycle (standard)
+
+A tenant is a Keycloak organization alias. The control plane (Platform) calls a product with its own client's token for the product's audience.
+Every call is idempotent: Platform retries from an outbox. A product that speaks this needs no code in Platform, only `tenant.lifecycle: standard`
+in its registry file. Agents and Data predate it and have adapters of their own (`tenant.lifecycle: custom`).
+
+| Call | Meaning | Answers |
+|---|---|---|
+| `PUT /api/v1/tenants/{alias}` | the tenant exists | 200 or 201, also when it already did |
+| `PUT /api/v1/tenants/{alias}/entitlements` `{version, values}` | replace the whole set; ignore a `version` older than the one held | 200 |
+| `GET /api/v1/tenants/{alias}/usage?period=YYYY-MM` | counters, never content: `{period, meters: {name: number}}` | 200, or 404 for none yet |
+| `DELETE /api/v1/tenants/{alias}` | erase everything of the tenant | 202 `{task}`, or 200/204 when already done |
+| `GET /api/v1/tenants/{alias}/erasure/{task}` | `{state: pending\|done\|failed}` | 200 |
+| `GET /healthz` | alive | 200 |
+
+Entitlement keys are namespaced by product. A refusal (4xx other than 429) is final; 429 and 5xx are retried with growing delay.
+Today only the contract and Platform's side exist (`loamz-platform/src/control/`); no product serves it yet.
+
 ## Still to write (each needs vectors before it is a rule)
 
 Problem documents (RFC 9457, and Data's "404, never 403"), the event-stream frames Agents sends and Chat reads, pagination and
-idempotency, the tenant lifecycle calls (provision, entitlements, usage, erase), and the webhook signature.
+idempotency, vectors for the tenant lifecycle calls, and the webhook signature.
