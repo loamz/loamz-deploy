@@ -23,7 +23,7 @@ and copy the vector file into each engine's tests (`python3 spec/generate_vector
 `type` is one of `text.delta`, `reasoning.delta`, `tool.call`, `tool.result`, `approval.requested`, `turn.completed`, `run.completed`, `run.failed`,
 `run.cancelled`, `ping`. A `ping` carries nothing and is dropped; `data: [DONE]` ends the stream. A stream that ends without a `run.*` event is a
 cut connection and a reader reports it as a failure. `vectors/sse/turn.json` holds streams and what a reader must make of them; the reader in
-loamz-ui (`@loamz/conversation`) runs them. Agents' emitter is **not** yet tested against them.
+loamz-agents-ui (`@loamz/conversation`) runs them. Agents' emitter is **not** yet tested against them.
 
 ## The tenant lifecycle (standard)
 
