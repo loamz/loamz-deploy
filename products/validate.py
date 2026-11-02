@@ -96,21 +96,24 @@ def check(products: list[Product], edges: dict[str, list[str]], host: dict[str, 
                     problems.append(f"{pid}: client {c['id']} redirects to {uri}, which is not the app's host {app_host}")
 
     # Rule R2: edges. Every edges key and value is a product, and every audience a product calls belongs to an allowed callee.
-    for caller, callees in edges.items():
+    # `_optional_web` lists edges that exist only in the browser and only when the app is configured with the callee's address (the
+    # server never calls, and the product works without it): Data's Home asks Agents, for instance.
+    web = edges.get("_optional_web", {})
+    server_edges = {k: v for k, v in edges.items() if k != "_optional_web"}
+    for caller, callees in [*server_edges.items(), *web.items()]:
         for name in [caller, *callees]:
             if name not in ids:
                 problems.append(f"edges.yml names {name}, which is not a product")
     for p in products:
-        wanted = list(p["identity"]["calls"]) + list(p["identity"]["web_extra_audiences"])
-        for audience in wanted:
+        pid = p["id"]
+        for audience, allowed, how in [(a, server_edges.get(pid, []), "call") for a in p["identity"]["calls"]] + [
+            (a, [*server_edges.get(pid, []), *web.get(pid, [])], "reach from its web app") for a in p["identity"]["web_extra_audiences"]
+        ]:
             callee = by_audience.get(audience)
             if callee is None:
-                problems.append(f"{p['id']}: calls audience {audience}, which no product has")
-            elif callee["id"] not in edges.get(p["id"], []):
-                problems.append(f"{p['id']} may not call {callee['id']}: add it to edges.yml if that edge is intended")
-        for extra in p["identity"]["web_extra_audiences"]:
-            if extra not in p["identity"]["calls"]:
-                problems.append(f"{p['id']}: web_extra_audiences has {extra}, which is not in calls")
+                problems.append(f"{pid}: {how} audience {audience}, which no product has")
+            elif callee["id"] not in allowed:
+                problems.append(f"{pid} may not {how} {callee['id']}: add it to edges.yml if that edge is intended")
 
     # Rule R3: both ends of a token exchange agree.
     for p in products:

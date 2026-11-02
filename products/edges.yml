@@ -4,3 +4,7 @@
 chat: [agents]
 agents: [data]
 data: []
+# Optional edges that exist only in a product's browser app, and only when the app is given the callee's address. The server never
+# calls, and the product works alone without it. Data's Home page has an "Ask anything" box that talks to Agents.
+_optional_web:
+  data: [agents]

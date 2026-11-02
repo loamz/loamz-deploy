@@ -25,7 +25,9 @@ identity:
   accepts_exchange_from: [loamz-agents]
   # Data works without Agents and calls no other product.
   calls: []
-  web_extra_audiences: []
+  # The Home page's "Ask anything" box calls the Agents API from the browser with the person's own token; without an Agents address
+  # configured the box is not shown and Data works alone.
+  web_extra_audiences: [loamz-agents]
 tenant:
   key: keycloak_org_alias
   lifecycle: custom
