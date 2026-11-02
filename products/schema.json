@@ -202,6 +202,13 @@
         "tools_manifest": {
           "type": "string",
           "pattern": "^/"
+        },
+        "safe_tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tool names that only read and run without asking. Everything else asks the person each time; what a product says about its own tools is never trusted."
         }
       },
       "allOf": [

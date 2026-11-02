@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Checks the product registry: every products/<id>.yml against schema.json, and the rules between products (docs/ARCHITECTURE.md).
 
-    python3 products/validate.py            exit 0 and one line when it is sound; every problem listed, exit 1, when it is not
+    python3 products/validate.py [--export-agents FILE]   (the export is what the Agents server reads to offer products' tools)
+    exit 0 and one line when it is sound; every problem listed, exit 1, when it is not
 
 Needs PyYAML and jsonschema. The rules that need more than one file live here: who may call whom (edges.yml), that both ends of a
 token exchange agree, that clients, audiences, ports and hosts are unique, and that the products fit in the machine's memory (host.yml).
@@ -42,6 +43,21 @@ def load(directory: Path) -> tuple[list[Product], dict[str, list[str]], dict[str
     edges = yaml.safe_load((directory / "edges.yml").read_text()) or {}
     host = yaml.safe_load((directory / "host.yml").read_text())
     return products, edges, host, problems
+
+
+def export_for_agents(products: list[Product]) -> list[dict[str, Any]]:
+    """What the Agents server needs to offer a product's tools: only products that serve tools over MCP. Written to the file named by
+    LOAMZ_AGENTS_PRODUCTS__FILE; the Agents server reads JSON, so it needs no YAML."""
+    return [
+        {
+            "id": p["id"], "name": p["name"], "audience": p["identity"]["audience"], "state": p["state"],
+            "mcp_url": p["urls"]["internal"] + p["agents"]["mcp_path"],
+            "manifest_url": p["urls"]["internal"] + p["agents"]["tools_manifest"],
+            "safe_tools": sorted(p["agents"].get("safe_tools", [])),
+        }
+        for p in products
+        if p["agents"]["mode"] == "mcp" and p["state"] != "planned"
+    ]
 
 
 def check(products: list[Product], edges: dict[str, list[str]], host: dict[str, Any]) -> list[str]:
@@ -134,6 +150,11 @@ def check(products: list[Product], edges: dict[str, list[str]], host: dict[str, 
 
 
 def main(argv: list[str]) -> int:
+    export = None
+    if "--export-agents" in argv:
+        at = argv.index("--export-agents")
+        export = Path(argv[at + 1])
+        argv = argv[:at] + argv[at + 2:]
     directory = Path(argv[1]) if len(argv) > 1 else HERE
     products, edges, host, problems = load(directory)
     problems += check(products, edges, host)
@@ -141,6 +162,8 @@ def main(argv: list[str]) -> int:
         print("\n".join(f"  {p}" for p in problems), file=sys.stderr)
         print(f"registry: {len(problems)} problem(s)", file=sys.stderr)
         return 1
+    if export:
+        export.write_text(json.dumps(export_for_agents(products), indent=2) + "\n")
     used = sum(p["deploy"].get("memory_mb", 0) for p in products)
     reserved = sum(host["reserved_mb"].values())
     print(f"registry ok: {len(products)} products ({', '.join(p['id'] for p in products)}); "

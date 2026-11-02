@@ -87,3 +87,17 @@ def test_a_file_must_be_named_after_its_product_and_match_the_schema(registry: P
 def test_a_public_client_must_redirect_only_to_its_own_host(registry: Path) -> None:
     edit(registry, "chat.yml", lambda d: d["identity"]["clients"][0].update(redirects=["https://evil.example/auth/callback"]))
     assert any("not the app's host" in p for p in problems(registry))
+
+
+def test_only_mcp_products_are_exported_for_agents():
+    import copy
+    products = copy.deepcopy(validate.load(REAL)[0])
+    assert validate.export_for_agents(products) == []  # today every product is builtin or none
+    echo = copy.deepcopy(next(p for p in products if p["id"] == "data"))
+    echo.update(id="echo", name="Echo", state="beta")
+    echo["agents"] = {"mode": "mcp", "mcp_path": "/mcp", "tools_manifest": "/.well-known/loamz/tools", "safe_tools": ["say"]}
+    echo["identity"]["audience"] = "loamz-echo"
+    echo["urls"]["internal"] = "http://127.0.0.1:8031"
+    [row] = validate.export_for_agents([*products, echo])
+    assert row == {"id": "echo", "name": "Echo", "audience": "loamz-echo", "state": "beta", "mcp_url": "http://127.0.0.1:8031/mcp",
+                   "manifest_url": "http://127.0.0.1:8031/.well-known/loamz/tools", "safe_tools": ["say"]}
