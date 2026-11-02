@@ -1,4 +1,7 @@
-# Putting Loamz Chat on one machine
+# Putting Loamz on one machine
+
+How the products fit together, and the rules for adding one: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Operations: [docs/runbooks/](docs/runbooks/README.md).
+Undo a bad deploy with `./release.sh rollback` (it keeps the last 3 builds), then `ansible-playbook site.yml`.
 
 Everything here was run end to end against a fresh Ubuntu 24.04 machine (in a container) and then the real web app
 signed in through it under the production security policy. Run it a second time and it changes almost nothing.
