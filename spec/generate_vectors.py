@@ -23,7 +23,8 @@ OUT = HERE / "vectors" / "token"
 KEY_FILE = HERE / "vectors" / "test-key.pem"
 ISSUER = "https://auth.example.test/realms/loamz"
 FUTURE, PAST = 4102444800, 978307200  # 2100-01-01 and 2001-01-01
-AUDIENCES = ["loamz-data"]
+AUDIENCES = ["loamz-data", "loamz-chat", "loamz-agents"]
+ANA, SVC = "7a1c2d3e-0000-4000-8000-00000000a001", "7a1c2d3e-0000-4000-8000-00000000b002"
 
 
 def key(path: Path) -> rsa.RSAPrivateKey:
@@ -42,29 +43,38 @@ def jwks(k: rsa.RSAPrivateKey, kid: str) -> dict[str, object]:
 
 
 def cases(k: rsa.RSAPrivateKey, audience: str) -> list[dict[str, object]]:
-    base = {"iss": ISSUER, "aud": audience, "sub": "ana-1", "exp": FUTURE, "azp": "loamz-web"}
+    base = {"iss": ISSUER, "aud": audience, "sub": ANA, "iat": PAST, "exp": FUTURE, "azp": "loamz-web", "typ": "Bearer", "email_verified": True, "organization": ["acme"]}
+    no_org = {k_: v for k_, v in base.items() if k_ != "organization"}
 
     def sign(claims: dict[str, object], kid: str | None = "k1", alg: str = "RS256", secret: object = None) -> str:
         headers = {"kid": kid} if kid else {}
         return jwt.encode(claims, secret if secret is not None else k, algorithm=alg, headers=headers)
 
-    def ok(name: str, token: str, **who: object) -> dict[str, object]:
-        return {"name": name, "token": token, "expect": {"ok": True, **who}}
+    def ok(name: str, token: str, only: dict[str, dict[str, object]] | None = None, **who: object) -> dict[str, object]:
+        case: dict[str, object] = {"name": name, "token": token, "expect": {"ok": True, **who}}
+        if only:
+            case["expect_by_audience"] = only
+        return case
 
     def bad(name: str, token: str, error: str) -> dict[str, object]:
         return {"name": name, "token": token, "expect": {"ok": False, "error": error}}
 
+    # Chat and Agents work for exactly one organization per token; Agents also refuses a person who names none. Data reads them all.
+    ambiguous = {a: {"ok": False, "error": "ambiguous_organization"} for a in ("loamz-chat", "loamz-agents")}
     return [
-        ok("a person with an organization and groups", sign({**base, "name": "Ana", "email": "ana@acme.test", "organization": ["acme"], "groups": ["/finance/analysts", "/finance/analysts"]}),
-           subject="ana-1", kind="person", client="loamz-web", orgs=["acme"], groups=["/finance/analysts"], actor=None),
-        ok("a person with no organization", sign(base), subject="ana-1", kind="person", client="loamz-web", orgs=[], groups=[], actor=None),
-        ok("organizations given as an object are read by alias", sign({**base, "organization": {"acme": {"id": "x"}, "beta": {}}}),
-           subject="ana-1", kind="person", client="loamz-web", orgs=["acme", "beta"], groups=[], actor=None),
-        ok("a service account of kind agent", sign({**base, "sub": "svc-1", "azp": "agent-helper", "loamz_kind": "agent"}),
-           subject="svc-1", kind="service", client="agent-helper", orgs=[], groups=[], actor=None),
+        ok("a person with an organization and groups", sign({**base, "name": "Ana", "email": "ana@acme.test", "groups": ["/finance/analysts", "/finance/analysts"]}),
+           subject=ANA, kind="person", client="loamz-web", orgs=["acme"], groups=["/finance/analysts"], actor=None),
+        ok("a person with no organization", sign(no_org), only={"loamz-agents": {"ok": False, "error": "no_organization"}},
+           subject=ANA, kind="person", client="loamz-web", orgs=[], groups=[], actor=None),
+        ok("organizations given as an object are read by alias", sign({**base, "organization": {"acme": {"id": "x"}}}),
+           subject=ANA, kind="person", client="loamz-web", orgs=["acme"], groups=[], actor=None),
+        ok("a person in two organizations", sign({**base, "organization": ["beta", "acme"]}), only=ambiguous,
+           subject=ANA, kind="person", client="loamz-web", orgs=["acme", "beta"], groups=[], actor=None),
+        ok("a service account of kind agent", sign({**no_org, "sub": SVC, "azp": "agent-helper", "loamz_kind": "agent", "preferred_username": "service-account-helper"}),
+           subject=SVC, kind="service", client="agent-helper", orgs=[], groups=[], actor=None),
         ok("a token exchanged for an agent acting for a person (act claim)", sign({**base, "azp": "loamz-agents", "act": {"sub": "agent-helper"}}),
-           subject="ana-1", kind="person", client="loamz-agents", orgs=[], groups=[], actor="agent-helper"),
-        bad("expired", sign({**base, "exp": PAST}), "invalid"),
+           subject=ANA, kind="person", client="loamz-agents", orgs=["acme"], groups=[], actor="agent-helper"),
+        bad("expired", sign({**base, "exp": PAST + 1}), "invalid"),
         bad("wrong issuer", sign({**base, "iss": "https://evil.example.test/realms/loamz"}), "invalid"),
         bad("wrong audience", sign({**base, "aud": "loamz-other"}), "invalid"),
         bad("no subject", sign({k_: v for k_, v in base.items() if k_ != "sub"}), "invalid"),
