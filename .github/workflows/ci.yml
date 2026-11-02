@@ -26,7 +26,7 @@ jobs:
       - name: The token vectors are what the generator writes
         run: python3 spec/generate_vectors.py --check
       - name: Each rule of the registry fires
-        run: python3 -m pytest products/test_validate.py -q
+        run: python3 -m pytest products/test_validate.py roles/keycloak/files/test_reconcile.py -q
 
   playbooks:
     runs-on: ubuntu-latest
