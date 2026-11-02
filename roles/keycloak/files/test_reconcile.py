@@ -96,3 +96,38 @@ def test_prune_deletes_only_what_the_registry_made() -> None:
     assert kept == ["client loamz-gone is no longer in the registry (kept; --prune deletes it)"] and "a" in kc.clients
     assert reconcile.converge(kc, products(), apply=True, prune=True) == ["delete client loamz-gone (no longer in the registry)"]
     assert "a" not in kc.clients and "b" in kc.clients
+
+
+def test_a_new_product_is_one_registry_file(tmp_path: Path) -> None:
+    """The family's claim: adding product N is one file here and no change to the others."""
+    import shutil
+
+    registry = tmp_path / "products"
+    shutil.copytree(REGISTRY, registry, ignore=shutil.ignore_patterns("__pycache__"))
+    (registry / "echo.yml").write_text(
+        """schema: 1
+id: echo
+name: Loamz Echo
+kind: solution
+state: beta
+repo: loamz-echo
+urls: { app: https://echo.loamz.com, api: https://echo.loamz.com/api, internal: "http://127.0.0.1:8031" }
+identity:
+  audience: loamz-echo
+  clients:
+    - { id: loamz-echo, type: public, purpose: The echo web app., redirects: ["https://echo.loamz.com/*"], origins: ["https://echo.loamz.com"] }
+  accepts_exchange_from: []
+  calls: []
+  web_extra_audiences: []
+tenant: { key: keycloak_org_alias, lifecycle: none }
+agents: { mode: none }
+deploy: { kind: binary, unit: loamz-echo, port: 8031, health: /healthz, memory_mb: 64 }
+shell: { icon: Repeat, order: 90 }
+"""
+    )
+    found, edges, host, problems = validate.load(registry)
+    assert not problems and validate.check(found, edges, host) == []
+    kc = Fake()
+    changes = reconcile.converge(kc, found, apply=True)
+    assert "create client loamz-echo" in changes and "client loamz-echo: token carries loamz-echo" in changes
+    assert not any(line.startswith("update") for line in changes)
