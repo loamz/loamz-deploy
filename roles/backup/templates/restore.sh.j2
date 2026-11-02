@@ -1,13 +1,22 @@
 #!/bin/sh
-# Restores an encrypted dump into a database. Usage: loamz-chat-restore <chat-....dump.enc> [database name]
-# The default database is "chat_restored" so a live database is never overwritten by accident.
+# Restores an encrypted dump into a database. Usage: loamz-chat-restore <chat-....dump.enc> [database name] [owner role]
+# The default database is "chat_restored" so a live database is never overwritten by accident. Without an owner the tables belong
+# to postgres: fine to look at, but the app cannot use them (it gets "permission denied"). To bring a database back for real,
+# stop the app, drop the empty database, and name the role that owns it (chat, keycloak and loamz_agents each have a role of
+# the same name):   loamz-chat-restore chat-....dump.enc chat chat
 set -eu
-file=${1:?usage: loamz-chat-restore <chat-....dump.enc> [database]}
+file=${1:?usage: loamz-chat-restore <chat-....dump.enc> [database] [owner role]}
 db=${2:-chat_restored}
+owner=${3:-}
 key=/etc/loamz-chat/backup.key
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass "file:$key" -in "$file" -out "$tmp"
-runuser -u postgres -- createdb "$db"
-runuser -u postgres -- pg_restore --no-owner --dbname "$db" < "$tmp"
+if [ -n "$owner" ]; then
+  runuser -u postgres -- createdb -O "$owner" "$db"
+  runuser -u postgres -- pg_restore --no-owner --role "$owner" --dbname "$db" < "$tmp"
+else
+  runuser -u postgres -- createdb "$db"
+  runuser -u postgres -- pg_restore --no-owner --dbname "$db" < "$tmp"
+fi
 echo "restored into database $db"

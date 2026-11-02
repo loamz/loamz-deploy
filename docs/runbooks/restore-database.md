@@ -1,6 +1,6 @@
 # Runbook: Restore Database and Monthly Recovery Drill
 
-*Source:* `deploy/ansible/roles/backup/templates/backup.sh.j2`, `deploy/compose.dev.yml`, `scripts/dev.sh`, `crates/chat-store-pg/migrations/`.
+*Source:* `roles/backup/templates/{backup,restore}.sh.j2` in this repository, and `loamz-chat` (`deploy/compose.dev.yml`, `scripts/dev.sh`, `crates/chat-store-pg/migrations/`).
 
 Use this runbook to:
 1. Verify the integrity of database dumps in a local scratch environment without touching the live server.
@@ -96,7 +96,7 @@ rm -f /tmp/chat-drill.dump
 
 ## Part B: Monthly Recovery Drill Checklist
 
-Execute this checklist on the first Monday of every month. Record results in `docs/runbooks/restore-database.md` (the monthly drill checklist) (`UNCONFIRMED: check with Claude`).
+Execute this checklist on the first Monday of every month and record it in the **Drill log** at the bottom of this page. Once, do the full rebuild drill ([vm-died.md](vm-died.md)) on a throwaway machine.
 
 - [ ] **1. Backup Freshness:** Confirm a new backup file was written to `/var/backups/loamz-chat/` within the past 24 hours.
   ```bash
@@ -112,8 +112,20 @@ Execute this checklist on the first Monday of every month. Record results in `do
 - [ ] **6. Record Sign-off:** Log the drill date, backup timestamp, table row counts, and tester name.
 
 ## Encrypted backups (from 2026-10-27)
-Nightly dumps are encrypted with `/etc/loamz-chat/backup.key` (made once on the server). **Copy that key to your password manager**
-(`ansible-playbook backup-secrets.yml` fetches it into `deploy/ansible/secrets-backup/`). Without it an off-machine copy cannot be opened.
-To restore on any machine that has the key at that path: `sudo loamz-chat-restore chat-YYYYMMDD-HHMM.dump.enc [database]`
-(default database `chat_restored`; it refuses to touch a live one). Then point the server at it, or copy what you need out.
+Nightly dumps of the three databases (`chat`, `keycloak`, `loamz_agents`) and the agents' chat-bridge state (`agents-bridge-*.tar.enc`) are
+encrypted with `/etc/loamz-chat/backup.key` (made once on the server). **Copy that key, and `/etc/loamz-agents/sealing.key`, to your password
+manager:** `ansible-playbook backup-secrets.yml` fetches them into `secrets-backup/` in this repository. Without the backup key an off-machine copy
+cannot be opened; without the sealing key the agents server's stored conversations cannot be.
+
+To look at a dump on any machine that has the key at that path: `sudo loamz-chat-restore chat-YYYYMMDD-HHMM.dump.enc [database]`
+(default database `chat_restored`; it refuses to touch a live one). To bring a database back for real (stop the app, drop the empty
+database first) name its owner too: `sudo loamz-chat-restore chat-YYYYMMDD-HHMM.dump.enc chat chat`. Without the owner the tables belong to
+`postgres` and the app gets "permission denied" (checked in a scratch Postgres on 2 November 2026).
 Off-machine copies (when `backup_remote` is set) keep 7 daily dumps and 12 monthly ones.
+
+## Drill log
+Add a row each time. A drill is only counted when the restored data was opened and read.
+
+| Date | By | What was restored, and from where | Result | What had to be fixed |
+|---|---|---|---|---|
+| 2026-11-02 | Claude (mechanism only, not a drill) | `pg_restore --no-owner` into a scratch Postgres 17 | Tables came back owned by `postgres`; the app role got "permission denied" | `loamz-chat-restore` takes the owner role as a third argument (`--role`); with it the app role reads the data |

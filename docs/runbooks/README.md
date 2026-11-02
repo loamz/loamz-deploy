@@ -2,7 +2,7 @@
 
 These runbooks guide the operator through recovery, maintenance, emergency response, and administrative tasks for Loamz Chat.
 
-All procedures are verified against the deployment automation in `deploy/ansible/` and the server architecture.
+The procedures follow the playbooks and scripts in this repository (`site.yml`, `roles/`, `backup-secrets.yml`). A page that has not been run for real says so at the top; the restore drill log is in [restore-database.md](restore-database.md).
 
 ---
 

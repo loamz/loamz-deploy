@@ -5,11 +5,13 @@
 #   LEGAL=on                            show the privacy, terms and consent screens (only once docs/legal has no OWNER TO markers)
 #   AUTH_URL=https://auth.example.com   where people sign in (Keycloak); the web app is built to use it
 # Needs: cargo-zigbuild and zig (or `pip install ziglang`), wasm-pack, pnpm.
+# The previous build is saved first (see ./release.sh), so ./release.sh rollback can put it back.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "${CHAT_REPO:-$here/../loamz-chat}" && pwd)
 target=${1:-aarch64-unknown-linux-gnu.2.35}
 out="$here/artifacts"
+"$here/release.sh" keep   # the last build is kept (3 of them) so a bad deploy can be undone: ./release.sh rollback
 rm -rf "$out" && mkdir -p "$out"
 cd "$root"
 cargo zigbuild --release -p chat-server --target "$target"

@@ -1,9 +1,9 @@
 #!/bin/sh
-# Dumps the database, keeps two weeks here, and copies an ENCRYPTED copy off the machine when a remote is set.
+# Dumps the databases and the agents' bridge state, keeps two weeks here, and copies an ENCRYPTED copy off the machine when a remote is set.
 # The key lives in /etc/loamz-chat/backup.key (made once by Ansible; ansible-playbook backup-secrets.yml copies it to the owner).
 # Without that key the off-machine copy cannot be read, so keep it in your password manager. Files in blobs/ are already
 # ciphertext (the people's own keys), so they are copied as they are. The device-authority key is NOT in this backup either.
-# Restore with loamz-chat-restore (same folder), see docs/runbooks/restore-database.md.
+# Restore a database with loamz-chat-restore (same folder), see docs/runbooks/restore-database.md; the bridge state is a tar, see vm-died.md.
 set -eu
 dir=/var/backups/loamz-chat
 key=/etc/loamz-chat/backup.key
@@ -16,7 +16,18 @@ for db in chat keycloak loamz_agents; do
   openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass "file:$key" -in "$dump" -out "$dump.enc"
   dumps="$dumps $dump.enc"
 done
-find "$dir" -name '*.dump*' -mtime +14 -delete
+# The chat bridge's state: each AI agent's own device identity and group state. Losing it means every agent must be added to its chats
+# again. It is already sealed with the agent's own key (/etc/loamz-agents/bridge-NAME.key, copied to the owner by backup-secrets.yml);
+# it is encrypted again here like the dumps, and only the encrypted copy is kept.
+state=/var/lib/loamz-agents/bridge
+if [ -d "$state" ]; then
+  tarball="$dir/agents-bridge-$stamp.tar"
+  tar -C "$(dirname "$state")" -cf "$tarball" "$(basename "$state")"
+  openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass "file:$key" -in "$tarball" -out "$tarball.enc"
+  rm -f "$tarball"
+  dumps="$dumps $tarball.enc"
+fi
+find "$dir" \( -name '*.dump*' -o -name '*.tar*' \) -mtime +14 -delete
 {% set remote = backup_remote | default("b2:" ~ b2_bucket if b2_key | length > 0 else "") %}
 {% if remote %}
 # Daily copies stay 7 days; the first of each month is also kept under monthly/ for a year.
