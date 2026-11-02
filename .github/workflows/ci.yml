@@ -20,9 +20,11 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
-      - run: pip install pyyaml==6.0.3 jsonschema==4.26.0 pytest==9.1.1
+      - run: pip install pyyaml==6.0.3 jsonschema==4.26.0 pytest==9.1.1 pyjwt==2.15.1 cryptography==50.0.2
       - name: The product registry is sound
         run: python3 products/validate.py
+      - name: The token vectors are what the generator writes
+        run: python3 spec/generate_vectors.py --check
       - name: Each rule of the registry fires
         run: python3 -m pytest products/test_validate.py -q
 
